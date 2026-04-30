@@ -7,8 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:custom": "eslint \"app/**/*.{ts,tsx}\" --ignore-pattern \"node_modules/\"",
+    "lint:custom:fix": "eslint \"app/**/*.{ts,tsx}\" --fix --ignore-pattern \"node_modules/\"",
     "electron:dev": "electron .",
     "electron:build": "electron-builder"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "npm run lint:custom:fix",
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "mermaid": "^10.9.0",
@@ -21,8 +30,11 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.1",
+    "@typescript-eslint/parser": "^8.59.1",
+    "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.3",
+    "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-security": "^2.1.1",
     "husky": "^9.0.11",
     "lint-staged": "^15.2.7",
