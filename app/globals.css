@@ -24,3 +24,10 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Mermaid SVG テキストの表示保証 */
+.diagram-preview svg text,
+.diagram-preview svg tspan {
+  fill: currentColor;
+}
+

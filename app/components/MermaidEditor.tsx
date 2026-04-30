@@ -1,6 +1,6 @@
 'use client';
 
-import CodeMirror from '@uiw/react-codemirror';
+import CodeMirror, { oneDark } from '@uiw/react-codemirror';
 
 interface Props {
   value: string;
@@ -20,6 +20,7 @@ export default function MermaidEditor({ value, onChange }: Props) {
           foldGutter: false,
           autocompletion: false,
         }}
+        theme={oneDark}
         style={{ fontSize: '0.8125rem', fontFamily: 'ui-monospace, monospace' }}
       />
     </div>
