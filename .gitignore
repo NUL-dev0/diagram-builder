@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 図データ（個人・機密情報が含まれる可能性）
+diagrams/
+
+# API キー・認証情報
+config.json
