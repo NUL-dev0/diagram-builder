@@ -200,4 +200,4 @@ git add README.md LICENSE .gitignore
 git commit -m "chore: Add README skeleton, LICENSE, and .gitignore"
 
 # GitHub へプッシュ
-git push origin main
+git push origin mainTest commit for husky setup
