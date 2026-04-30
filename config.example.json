@@ -1,0 +1,22 @@
+{
+    "llm": {
+      "provider": "anthropic",
+      "model": "claude-3-5-sonnet-20241022",
+      "apiKey": null,
+      "endpoint": null
+    },
+    "storage": {
+      "useLocalFile": true,
+      "localPath": "./diagrams",
+      "useLocalStorage": true,
+      "localStorageLimit": 50
+    },
+    "security": {
+      "promptConfirmation": "session",
+      "logDataTransmission": false,
+      "preferLocalLLM": false
+    },
+    "features": {
+      "enableNewUI": false
+    }
+  }

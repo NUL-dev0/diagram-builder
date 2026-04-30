@@ -44,4 +44,4 @@ next-env.d.ts
 diagrams/
 
 # API キー・認証情報
-config.json
+config.jsonfeat: Add sample configuration files and update .gitignore
