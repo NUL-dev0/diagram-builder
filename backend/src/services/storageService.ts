@@ -9,6 +9,7 @@ export interface DiagramRecord {
   description: string;
   mermaidCode: string;
   tags: string[];
+  folder: string;
   llmProvider: string;
   createdAt: string;
   updatedAt: string;

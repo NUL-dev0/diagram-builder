@@ -20,13 +20,15 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveNameInput, setSaveNameInput] = useState('');
-  const { diagrams, saveDiagram, deleteDiagram } = useDiagrams();
+  const [saveFolderInput, setSaveFolderInput] = useState('');
+  const { diagrams, saveDiagram, deleteDiagram, moveDiagram } = useDiagrams();
   const [editorHeight, setEditorHeight] = useState(192);
   const [editorVisible, setEditorVisible] = useState(true);
   const [showSecurityDialog, setShowSecurityDialog] = useState(false);
   const [provider, setProvider] = useState<string>('openai-compatible');
   const dividerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const saveEnterRef = useRef<number>(0);
 
   // ドラッグ中のマウスムーブ処理
   useEffect(() => {
@@ -113,8 +115,9 @@ export default function Home() {
 
   const handleSaveConfirm = async () => {
     if (!saveNameInput.trim()) return;
-    await saveDiagram({ name: saveNameInput.trim(), type: diagramType, mermaidCode, llmProvider: provider });
+    await saveDiagram({ name: saveNameInput.trim(), type: diagramType, mermaidCode, folder: saveFolderInput.trim(), llmProvider: provider });
     setSaveNameInput('');
+    setSaveFolderInput('');
     setSaveDialogOpen(false);
   };
 
@@ -146,11 +149,33 @@ export default function Home() {
               type="text"
               value={saveNameInput}
               onChange={(e) => setSaveNameInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveConfirm()}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                const now = Date.now();
+                if (now - saveEnterRef.current < 500) {
+                  saveEnterRef.current = 0;
+                  handleSaveConfirm();
+                } else {
+                  saveEnterRef.current = now;
+                }
+              }}
               placeholder="図の名前を入力"
               autoFocus
+              className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-2"
+            />
+            <input
+              type="text"
+              list="save-folder-list"
+              value={saveFolderInput}
+              onChange={(e) => setSaveFolderInput(e.target.value)}
+              placeholder="フォルダ名（省略可）"
               className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-4"
             />
+            <datalist id="save-folder-list">
+              {Array.from(new Set(diagrams.map((d) => d.folder).filter(Boolean))).map((f) => (
+                <option key={f} value={f} />
+              ))}
+            </datalist>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setSaveDialogOpen(false)} className="px-4 py-1.5 text-sm border rounded hover:bg-gray-50 text-gray-700">キャンセル</button>
               <button onClick={handleSaveConfirm} disabled={!saveNameInput.trim()} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">保存</button>
@@ -170,7 +195,7 @@ export default function Home() {
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
           />
-          <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={deleteDiagram} />
+          <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={deleteDiagram} onMove={moveDiagram} />
         </aside>
 
         {/* 右パネル */}

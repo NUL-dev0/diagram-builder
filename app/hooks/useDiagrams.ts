@@ -9,6 +9,7 @@ export interface SavedDiagram {
   description: string;
   mermaidCode: string;
   tags: string[];
+  folder: string;
   llmProvider: string;
   createdAt: string;
   updatedAt: string;
@@ -69,7 +70,7 @@ export function useDiagrams() {
   }, []);
 
   const saveDiagram = useCallback(
-    async (data: { name: string; type: string; mermaidCode: string; description?: string; tags?: string[]; llmProvider?: string }): Promise<SavedDiagram | null> => {
+    async (data: { name: string; type: string; mermaidCode: string; description?: string; tags?: string[]; folder?: string; llmProvider?: string }): Promise<SavedDiagram | null> => {
       try {
         const res = await fetch('/api/diagrams', {
           method: 'POST',
@@ -80,6 +81,7 @@ export function useDiagrams() {
             mermaidCode: data.mermaidCode,
             description: data.description ?? '',
             tags: data.tags ?? [],
+            folder: data.folder ?? '',
             llmProvider: data.llmProvider ?? 'manual',
           }),
         });
@@ -105,6 +107,7 @@ export function useDiagrams() {
         mermaidCode: data.mermaidCode,
         description: data.description ?? '',
         tags: data.tags ?? [],
+        folder: data.folder ?? '',
         llmProvider: data.llmProvider ?? 'manual',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -119,6 +122,25 @@ export function useDiagrams() {
     []
   );
 
+  const moveDiagram = useCallback(async (id: string, folder: string): Promise<void> => {
+    try {
+      await fetch(`/api/diagrams/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder }),
+      });
+    } catch {
+      // バックエンド未起動時はスキップ
+    }
+    setDiagrams((prev) => {
+      const updated = prev.map((d) =>
+        d.id === id ? { ...d, folder, updatedAt: new Date().toISOString() } : d
+      );
+      writeLocalStorage(updated);
+      return updated;
+    });
+  }, []);
+
   const deleteDiagram = useCallback(async (id: string): Promise<void> => {
     try {
       await fetch(`/api/diagrams/${id}`, { method: 'DELETE' });
@@ -132,5 +154,5 @@ export function useDiagrams() {
     });
   }, []);
 
-  return { diagrams, isLoading, saveDiagram, deleteDiagram };
+  return { diagrams, isLoading, saveDiagram, deleteDiagram, moveDiagram };
 }
