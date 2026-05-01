@@ -8,6 +8,7 @@ interface Props {
   onSelect: (diagram: SavedDiagram) => void;
   onDelete: (id: string) => void;
   onMove: (id: string, folder: string) => void;
+  onUpdate: (id: string, data: { name?: string; folder?: string }) => void;
 }
 
 type SortKey = 'updatedAt' | 'name' | 'type';
@@ -22,9 +23,21 @@ const SORT_LABELS: Record<SortKey, string> = {
   updatedAt: '更新日時', name: '名前', type: '種別',
 };
 
-export default function DiagramList({ diagrams, onSelect, onDelete, onMove }: Props) {
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${mm}/${dd} ${hh}:${min}`;
+}
+
+export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUpdate }: Props) {
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<SavedDiagram | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editFolder, setEditFolder] = useState('');
   const [open, setOpen] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
@@ -64,6 +77,18 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove }: Pr
     onMove(id, folder);
     setMovePopover(null);
     setNewFolderInput('');
+  };
+
+  const openEdit = (d: SavedDiagram) => {
+    setEditTarget(d);
+    setEditName(d.name);
+    setEditFolder(d.folder ?? '');
+  };
+
+  const handleEditSave = () => {
+    if (!editTarget || !editName.trim()) return;
+    onUpdate(editTarget.id, { name: editName.trim(), folder: editFolder.trim() });
+    setEditTarget(null);
   };
 
   return (
@@ -131,37 +156,51 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove }: Pr
                           <li key={d.id} className="group relative flex items-center gap-1">
                             <button
                               onClick={() => onSelect(d)}
-                              className="flex-1 text-left px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded truncate"
+                              className="flex-1 text-left px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded min-w-0"
                               title={d.name}
                             >
                               <span className="block truncate">{d.name}</span>
-                              <span className="text-gray-400">{TYPE_LABELS[d.type] ?? d.type}</span>
+                              <span className="text-gray-400">
+                                {TYPE_LABELS[d.type] ?? d.type}
+                                <span className="ml-1">{formatDate(d.updatedAt)}</span>
+                              </span>
                             </button>
+
+                            {/* 編集 */}
+                            <button
+                              onClick={() => openEdit(d)}
+                              className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-green-600 transition-opacity rounded text-xs shrink-0"
+                              title="編集"
+                            >
+                              ✏️
+                            </button>
+
+                            {/* フォルダ移動 */}
                             <button
                               onClick={() => {
                                 setMovePopover(movePopover === d.id ? null : d.id);
                                 setNewFolderInput('');
                               }}
-                              className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-blue-500 transition-opacity rounded text-xs"
+                              className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-blue-500 transition-opacity rounded text-xs shrink-0"
                               title="フォルダに移動"
                             >
                               📁
                             </button>
+
+                            {/* 削除 */}
                             <button
                               onClick={() => setDeleteTarget(d.id)}
-                              className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-red-500 transition-opacity rounded text-xs"
+                              className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-red-500 transition-opacity rounded text-xs shrink-0"
                               title="削除"
                             >
                               ✕
                             </button>
 
+                            {/* フォルダ移動ポップオーバー */}
                             {movePopover === d.id && (
                               <>
-                                <div
-                                  className="fixed inset-0 z-10"
-                                  onClick={() => setMovePopover(null)}
-                                />
-                                <div className="absolute right-0 top-full z-20 bg-white border rounded shadow-lg p-2 w-40 text-xs">
+                                <div className="fixed inset-0 z-10" onClick={() => setMovePopover(null)} />
+                                <div className="absolute right-0 top-full z-20 bg-white border rounded shadow-lg p-2 text-xs" style={{ width: '160px' }}>
                                   <p className="font-semibold text-gray-600 mb-1">移動先フォルダ</p>
                                   {folderKey !== '' && (
                                     <button
@@ -185,18 +224,16 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove }: Pr
                                       value={newFolderInput}
                                       onChange={(e) => setNewFolderInput(e.target.value)}
                                       onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && newFolderInput.trim()) {
-                                          handleMove(d.id, newFolderInput.trim());
-                                        }
+                                        if (e.key === 'Enter' && newFolderInput.trim()) handleMove(d.id, newFolderInput.trim());
                                       }}
                                       placeholder="新規フォルダ名"
-                                      className="flex-1 px-1 py-0.5 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                      className="min-w-0 flex-1 px-1 py-0.5 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                                       autoFocus
                                     />
                                     <button
                                       onClick={() => { if (newFolderInput.trim()) handleMove(d.id, newFolderInput.trim()); }}
                                       disabled={!newFolderInput.trim()}
-                                      className="px-1.5 py-0.5 bg-blue-600 text-white rounded disabled:opacity-50"
+                                      className="shrink-0 px-1.5 py-0.5 bg-blue-600 text-white rounded disabled:opacity-50"
                                     >
                                       ✓
                                     </button>
@@ -216,6 +253,50 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove }: Pr
         </>
       )}
 
+      {/* 編集モーダル */}
+      {editTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-5 max-w-xs w-full mx-4">
+            <h2 className="text-sm font-semibold text-gray-800 mb-3">図の編集</h2>
+            <label className="block text-xs text-gray-500 mb-1">名前</label>
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleEditSave()}
+              autoFocus
+              className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-3"
+            />
+            <label className="block text-xs text-gray-500 mb-1">フォルダ</label>
+            <input
+              type="text"
+              list="edit-folder-list"
+              value={editFolder}
+              onChange={(e) => setEditFolder(e.target.value)}
+              placeholder="フォルダ名（省略可）"
+              className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-1"
+            />
+            <datalist id="edit-folder-list">
+              {allFolders.map((f) => <option key={f} value={f} />)}
+            </datalist>
+            <p className="text-xs text-gray-400 mb-4">
+              更新日時: {formatDate(editTarget.updatedAt)}
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setEditTarget(null)} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50 text-gray-700">キャンセル</button>
+              <button
+                onClick={handleEditSave}
+                disabled={!editName.trim()}
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 削除確認モーダル */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-5 max-w-xs w-full mx-4">

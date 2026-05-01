@@ -141,6 +141,25 @@ export function useDiagrams() {
     });
   }, []);
 
+  const updateDiagramMeta = useCallback(async (id: string, data: { name?: string; folder?: string }): Promise<void> => {
+    try {
+      await fetch(`/api/diagrams/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    } catch {
+      // バックエンド未起動時はスキップ
+    }
+    setDiagrams((prev) => {
+      const updated = prev.map((d) =>
+        d.id === id ? { ...d, ...data, updatedAt: new Date().toISOString() } : d
+      );
+      writeLocalStorage(updated);
+      return updated;
+    });
+  }, []);
+
   const deleteDiagram = useCallback(async (id: string): Promise<void> => {
     try {
       await fetch(`/api/diagrams/${id}`, { method: 'DELETE' });
@@ -154,5 +173,5 @@ export function useDiagrams() {
     });
   }, []);
 
-  return { diagrams, isLoading, saveDiagram, deleteDiagram, moveDiagram };
+  return { diagrams, isLoading, saveDiagram, deleteDiagram, moveDiagram, updateDiagramMeta };
 }

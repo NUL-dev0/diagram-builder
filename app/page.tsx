@@ -21,7 +21,7 @@ export default function Home() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveNameInput, setSaveNameInput] = useState('');
   const [saveFolderInput, setSaveFolderInput] = useState('');
-  const { diagrams, saveDiagram, deleteDiagram, moveDiagram } = useDiagrams();
+  const { diagrams, saveDiagram, deleteDiagram, moveDiagram, updateDiagramMeta } = useDiagrams();
   const [editorHeight, setEditorHeight] = useState(192);
   const [editorVisible, setEditorVisible] = useState(true);
   const [showSecurityDialog, setShowSecurityDialog] = useState(false);
@@ -195,7 +195,7 @@ export default function Home() {
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
           />
-          <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={deleteDiagram} onMove={moveDiagram} />
+          <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={deleteDiagram} onMove={moveDiagram} onUpdate={updateDiagramMeta} />
         </aside>
 
         {/* 右パネル */}
