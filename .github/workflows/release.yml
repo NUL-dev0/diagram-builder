@@ -52,19 +52,31 @@ jobs:
         working-directory: backend
 
       - name: Build (Windows)
+        shell: pwsh
         run: |
           npx next build
-          xcopy /E /I .next\static .next\standalone\.next\static
-          xcopy /E /I public .next\standalone\public
-          cd backend && npm run build && cd ..
+          if (!(Test-Path ".next\standalone\.next\static")) { New-Item -ItemType Directory -Force ".next\standalone\.next\static" }
+          Copy-Item -Recurse -Force ".next\static\*" ".next\standalone\.next\static\"
+          if (!(Test-Path ".next\standalone\public")) { New-Item -ItemType Directory -Force ".next\standalone\public" }
+          Copy-Item -Recurse -Force "public\*" ".next\standalone\public\"
+          cd backend; npm run build; cd ..
           npm run electron:compile
           npx electron-builder --publish never
-        shell: cmd
+
+      - name: Debug - list output
+        shell: pwsh
+        run: |
+          Write-Host "=== Working directory ==="
+          Get-ChildItem -Path . -Directory | Select-Object Name
+          Write-Host "=== Searching for .exe ==="
+          Get-ChildItem -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object FullName
 
       - name: Upload to GitHub Release
-        run: |
-          $exe = Get-ChildItem -Path dist-electron -Filter "*.exe" | Select-Object -First 1
-          gh release upload $env:GITHUB_REF_NAME $exe.FullName --clobber
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter "*.exe" | Where-Object { $_.DirectoryName -notlike "*node_modules*" } | Select-Object -First 1
+          if (-not $exe) { Write-Error "No .exe found"; exit 1 }
+          Write-Host "Uploading: $($exe.FullName)"
+          gh release upload $env:GITHUB_REF_NAME $exe.FullName --clobber
