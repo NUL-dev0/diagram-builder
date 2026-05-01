@@ -8,6 +8,7 @@ import RequirementsForm from './components/RequirementsForm';
 import DiagramList from './components/DiagramList';
 import { DiagramType, DEFAULT_MERMAID_CODES } from './types/diagram';
 import SecurityDialog from './components/SecurityDialog';
+import PdfExportDialog from './components/PdfExportDialog';
 import { useDiagrams } from './hooks/useDiagrams';
 
 const DiagramPreview = dynamic(() => import('./components/DiagramPreview'), { ssr: false });
@@ -25,6 +26,7 @@ export default function Home() {
   const [editorHeight, setEditorHeight] = useState(192);
   const [editorVisible, setEditorVisible] = useState(true);
   const [showSecurityDialog, setShowSecurityDialog] = useState(false);
+  const [showPdfDialog, setShowPdfDialog] = useState(false);
   const [provider, setProvider] = useState<string>('openai-compatible');
   const dividerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -126,10 +128,7 @@ export default function Home() {
     setMermaidCode(diagram.mermaidCode);
   };
 
-  const handleExportPdf = () => {
-    // Phase 5 で実装
-    alert('PDF 出力は Phase 5 で実装予定です');
-  };
+  const handleExportPdf = () => setShowPdfDialog(true);
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
@@ -139,6 +138,14 @@ export default function Home() {
           diagramType={diagramType}
           onConfirm={handleGenerateConfirmed}
           onCancel={() => setShowSecurityDialog(false)}
+        />
+      )}
+      {showPdfDialog && (
+        <PdfExportDialog
+          currentCode={mermaidCode}
+          currentType={diagramType}
+          diagrams={diagrams}
+          onClose={() => setShowPdfDialog(false)}
         />
       )}
       {saveDialogOpen && (
