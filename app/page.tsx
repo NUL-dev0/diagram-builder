@@ -21,7 +21,7 @@ export default function Home() {
   const [editorHeight, setEditorHeight] = useState(192);
   const [editorVisible, setEditorVisible] = useState(true);
   const [showSecurityDialog, setShowSecurityDialog] = useState(false);
-  const provider = 'anthropic'; // Phase 4 で設定画面から変更可能にする
+  const [provider, setProvider] = useState<string>('openai-compatible');
   const dividerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -149,7 +149,19 @@ export default function Home() {
           </div>
 
           {/* アクションボタン */}
-          <div className="flex gap-2 px-4 py-2 border-t border-b bg-gray-50 shrink-0">
+          <div className="flex gap-2 px-4 py-2 border-t border-b bg-gray-50 shrink-0 items-center">
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+              className="px-2 py-1.5 text-sm border rounded bg-white text-gray-700 cursor-pointer"
+            >
+              <option value="anthropic">Claude (Anthropic)</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Gemini</option>
+              <option value="ollama">Ollama</option>
+              <option value="azure">Azure OpenAI</option>
+              <option value="openai-compatible">カスタム (OpenAI 互換)</option>
+            </select>
             <button
               onClick={handleGenerate}
               disabled={isGenerating}
