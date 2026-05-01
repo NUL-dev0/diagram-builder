@@ -58,6 +58,14 @@
         "to": "backend/package.json"
       }
     ],
+    "dmg": {
+      "backgroundColor": "#f0f0f0",
+      "window": { "width": 540, "height": 380 },
+      "contents": [
+        { "x": 150, "y": 220, "type": "file" },
+        { "x": 390, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    },
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
