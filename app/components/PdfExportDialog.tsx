@@ -1,7 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { SavedDiagram } from '../hooks/useDiagrams';
+
+interface BackendInfo {
+  projectRoot: string;
+  backendDir: string;
+  platform: string;
+  isRunning: boolean;
+}
 
 interface Props {
   currentCode: string;
@@ -49,6 +56,27 @@ export default function PdfExportDialog({ currentCode, currentType, diagrams, on
   const [coverTitle, setCoverTitle] = useState('DiagramBuilder 図面集');
   const [isExporting, setIsExporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [backendInfo, setBackendInfo] = useState<BackendInfo | null>(null);
+  const [osTab, setOsTab] = useState<'mac' | 'win'>('mac');
+  const [isStarting, setIsStarting] = useState(false);
+  const [startPhase, setStartPhase] = useState<'idle' | 'launching' | 'polling' | 'timeout'>('idle');
+  const [copied, setCopied] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // バックエンド停止エラー時にプラットフォーム情報を取得
+  useEffect(() => {
+    if (errorMsg !== '__backend_down__') return;
+    fetch('/api/start-backend')
+      .then((r) => r.json())
+      .then((data: BackendInfo) => {
+        setBackendInfo(data);
+        setOsTab(data.platform === 'win32' ? 'win' : 'mac');
+      })
+      .catch(() => {});
+  }, [errorMsg]);
+
+  // アンマウント時にポーリングを解除
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
   const folderKeys = Array.from(new Set(diagrams.map((d) => d.folder ?? ''))).sort((a, b) => {
     if (a === '') return 1;
@@ -75,7 +103,42 @@ export default function PdfExportDialog({ currentCode, currentType, diagrams, on
 
   const totalCount = (includeCurrent ? 1 : 0) + selectedIds.size;
 
-  const handleExport = async () => {
+  const handleStartBackend = useCallback(async () => {
+    setIsStarting(true);
+    setStartPhase('launching');
+    try {
+      await fetch('/api/start-backend', { method: 'POST' });
+    } catch {
+      setIsStarting(false);
+      setStartPhase('idle');
+      return;
+    }
+
+    setStartPhase('polling');
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch('/api/backend-health');
+        if (res.ok) {
+          clearInterval(pollRef.current!);
+          setIsStarting(false);
+          setStartPhase('idle');
+          setErrorMsg(null);
+          // 少し待ってから自動リトライ
+          setTimeout(() => handleExport(), 500);
+          return;
+        }
+      } catch { /* keep polling */ }
+      if (attempts >= 20) { // 40秒タイムアウト
+        clearInterval(pollRef.current!);
+        setIsStarting(false);
+        setStartPhase('timeout');
+      }
+    }, 2000);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleExport = useCallback(async () => {
     if (totalCount === 0) return;
     setIsExporting(true);
     setErrorMsg(null);
@@ -130,7 +193,7 @@ export default function PdfExportDialog({ currentCode, currentType, diagrams, on
     } finally {
       setIsExporting(false);
     }
-  };
+  }, [currentCode, currentType, diagrams, selectedIds, includeCurrent, orientation, includeCover, coverTitle, onClose]);
 
 
   return (
@@ -221,25 +284,73 @@ export default function PdfExportDialog({ currentCode, currentType, diagrams, on
           </section>
 
           {/* エラー */}
-          {errorMsg && (
-            <div className="bg-red-50 border border-red-200 rounded p-3 text-xs text-red-700 space-y-2">
-              {errorMsg === '__backend_down__' ? (
-                <>
-                  <p className="font-medium">バックエンドが起動していません</p>
-                  <p className="text-red-600">ターミナルで以下を実行してください：</p>
-                  <code className="block bg-red-100 rounded px-2 py-1 font-mono">
-                    cd backend &amp;&amp; npm run dev
+          {errorMsg === '__backend_down__' && (
+            <div className="bg-red-50 border border-red-200 rounded p-3 text-xs space-y-3">
+              <p className="font-semibold text-red-700">バックエンドが起動していません</p>
+
+              {/* OS タブ */}
+              <div className="flex gap-1">
+                {(['mac', 'win'] as const).map((os) => (
+                  <button
+                    key={os}
+                    onClick={() => setOsTab(os)}
+                    className={`px-2 py-0.5 rounded border text-xs transition-colors ${
+                      osTab === os ? 'bg-red-200 border-red-400 text-red-800' : 'border-red-200 text-red-500 hover:bg-red-100'
+                    }`}
+                  >
+                    {os === 'mac' ? 'Mac / Linux' : 'Windows'}
+                  </button>
+                ))}
+              </div>
+
+              {/* コマンド表示 */}
+              {backendInfo ? (
+                <div className="relative">
+                  <code className="block bg-red-100 rounded px-2 py-1.5 font-mono text-red-800 break-all leading-relaxed">
+                    {osTab === 'mac'
+                      ? `cd "${backendInfo.backendDir}" && npm run dev`
+                      : `cd /d "${backendInfo.backendDir}" && npm run dev`}
                   </code>
                   <button
-                    onClick={() => { setErrorMsg(null); handleExport(); }}
-                    className="underline text-red-600 hover:text-red-800"
+                    onClick={() => {
+                      const cmd = osTab === 'mac'
+                        ? `cd "${backendInfo.backendDir}" && npm run dev`
+                        : `cd /d "${backendInfo.backendDir}" && npm run dev`;
+                      navigator.clipboard.writeText(cmd).then(() => {
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      });
+                    }}
+                    className="absolute top-1 right-1 px-1.5 py-0.5 bg-red-200 hover:bg-red-300 rounded text-red-700 text-xs"
                   >
-                    起動したら再試行
+                    {copied ? '✓ コピー済' : 'コピー'}
                   </button>
-                </>
+                </div>
               ) : (
-                <p>{errorMsg}</p>
+                <div className="bg-red-100 rounded px-2 py-1.5 text-red-400 font-mono">取得中...</div>
               )}
+
+              {/* 起動ボタン */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleStartBackend}
+                  disabled={isStarting}
+                  className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-xs font-medium"
+                >
+                  {isStarting ? '起動中...' : 'バックエンドを起動する'}
+                </button>
+                {startPhase === 'polling' && (
+                  <span className="text-red-500 text-xs">起動確認中（最大40秒）...</span>
+                )}
+                {startPhase === 'timeout' && (
+                  <span className="text-red-600 text-xs">タイムアウト。手動で起動してください。</span>
+                )}
+              </div>
+            </div>
+          )}
+          {errorMsg && errorMsg !== '__backend_down__' && (
+            <div className="bg-red-50 border border-red-200 rounded p-3 text-xs text-red-700">
+              {errorMsg}
             </div>
           )}
         </div>
