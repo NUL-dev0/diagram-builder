@@ -1,6 +1,8 @@
 {
   "name": "diagram-builder",
   "version": "1.0.0",
+  "description": "AI-powered diagram builder with Mermaid.js",
+  "author": "NUL-dev0",
   "private": true,
   "main": ".electron/main.js",
   "scripts": {
@@ -12,7 +14,8 @@
     "lint:custom:fix": "eslint \"app/**/*.{ts,tsx}\" --fix --ignore-pattern \"node_modules/\"",
     "electron:compile": "tsc --project tsconfig.electron.json",
     "electron:dev": "npm run electron:compile && electron .",
-    "electron:build": "next build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cd backend && npm run build && cd .. && npm run electron:compile && electron-builder"
+    "electron:build": "next build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cd backend && npm run build && cd .. && npm run electron:compile && electron-builder",
+    "electron:release": "next build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cd backend && npm run build && cd .. && npm run electron:compile && electron-builder --publish onTag"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
