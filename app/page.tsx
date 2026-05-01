@@ -7,6 +7,7 @@ import DiagramTypeSelector from './components/DiagramTypeSelector';
 import RequirementsForm from './components/RequirementsForm';
 import DiagramList, { SavedDiagram } from './components/DiagramList';
 import { DiagramType, DEFAULT_MERMAID_CODES } from './types/diagram';
+import SecurityDialog from './components/SecurityDialog';
 
 const DiagramPreview = dynamic(() => import('./components/DiagramPreview'), { ssr: false });
 const MermaidEditor = dynamic(() => import('./components/MermaidEditor'), { ssr: false });
@@ -19,6 +20,8 @@ export default function Home() {
   const [savedDiagrams] = useState<SavedDiagram[]>([]);
   const [editorHeight, setEditorHeight] = useState(192);
   const [editorVisible, setEditorVisible] = useState(true);
+  const [showSecurityDialog, setShowSecurityDialog] = useState(false);
+  const provider = 'anthropic'; // Phase 4 で設定画面から変更可能にする
   const dividerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,14 +74,36 @@ export default function Home() {
     setMermaidCode(DEFAULT_MERMAID_CODES[type]);
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!requirements.trim() || isGenerating) return;
+    setShowSecurityDialog(true);
+  };
+
+  const handleGenerateConfirmed = async () => {
+    setShowSecurityDialog(false);
     setIsGenerating(true);
-    // Phase 2 で LLM API を統合
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    // eslint-disable-next-line security/detect-object-injection
-    setMermaidCode(DEFAULT_MERMAID_CODES[diagramType]);
-    setIsGenerating(false);
+    try {
+      const res = await fetch('/api/diagrams/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          diagramType,
+          description: requirements,
+          currentCode: mermaidCode,
+          provider,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMermaidCode(data.mermaidCode);
+      } else {
+        alert(`生成エラー: ${data.error}`);
+      }
+    } catch {
+      alert('バックエンドへの接続に失敗しました。サーバが起動しているか確認してください。');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSave = () => {
@@ -93,6 +118,14 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
+      {showSecurityDialog && (
+        <SecurityDialog
+          provider={provider}
+          diagramType={diagramType}
+          onConfirm={handleGenerateConfirmed}
+          onCancel={() => setShowSecurityDialog(false)}
+        />
+      )}
       <Header />
 
       <div className="flex flex-1 overflow-hidden">
