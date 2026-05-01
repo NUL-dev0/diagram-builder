@@ -3,8 +3,105 @@
 # 実装状況
 
 ## 進捗サマリ
-- **Phase 1（基盤 UI）: 完了** — GitHub Issues #1〜#18 すべてクローズ済み
-- **Phase 2 以降**: 未着手（#19〜#68）
+- **Phase 1: 完了** ✅
+- **Phase 2: 進行中** 🔄（#11〜#18 完了、#69 残）
+- **Phase 3〜8: 未着手**
+
+---
+
+## Issue タスク一覧
+
+> 最新状態は https://github.com/NUL-dev0/diagram-builder/issues で確認すること。
+
+### Phase 1 — プロジェクト基盤構築 ✅ 完了
+- [x] #1 リポジトリ作成・初期設定（README, LICENSE, .gitignore）
+- [x] #2 .env.example / config.example.json の作成
+- [x] #3 フロントエンド: React + TypeScript プロジェクト初期化
+- [x] #4 バックエンド: Node.js + Express プロジェクト初期化
+- [x] #5 ESLint + eslint-plugin-security の設定
+- [x] #6 TypeScript 厳格モード（strict: true）の設定
+- [x] #7 Husky + lint-staged でコミット前自動チェックを設定
+- [x] #8 Tailwind CSS の導入・基本スタイル設定
+- [x] #9 フロントエンド・バックエンド間の開発用プロキシ設定
+- [x] #10 GitHub Actions: npm audit 自動チェック CI を作成
+
+### Phase 2 — コア UI / Mermaid 統合 🔄 進行中
+- [x] #11 メイン画面レイアウトの実装（左パネル + 右パネル）
+- [x] #12 図の種類選択コンポーネントの実装（10種類）
+- [x] #13 要件入力フォームの実装
+- [x] #14 Mermaid.js の統合・リアルタイムプレビュー実装
+- [x] #15 CodeMirror エディタの統合（Mermaid コード編集）
+- [x] #16 プレビューのリアルタイム更新ロジックの実装
+- [x] #17 Chrome / Edge / Firefox / Safari でのブラウザ互換テスト
+- [x] #18 レスポンシブレイアウトの確認・調整
+- [ ] #69 「ネットワーク構成図」図タイプの追加（型定義・デフォルトコード・UI）
+
+### Phase 3 — LLM 統合
+- [ ] #19 LLM プロバイダ抽象化レイヤーの設計・実装
+- [ ] #20 Claude API（Anthropic）の統合
+- [ ] #21 OpenAI API の統合
+- [ ] #22 Google Gemini API の統合
+- [ ] #23 Ollama（ローカル LLM）の統合
+- [ ] #24 Azure OpenAI の統合
+- [ ] #25 各図種別のプロンプトテンプレート作成（10種類）
+- [ ] #26 API 呼び出し前の送信データ確認ダイアログ実装
+- [ ] #27 「再生成」ボタンの実装
+- [ ] #28 各プロバイダの動作確認テスト
+- [ ] #70 「ネットワーク構成図」向け LLM プロンプト設計
+
+### Phase 4 — セキュリティ・設定管理
+- [ ] #29 OS キーチェーン連携（keytar）の実装
+- [ ] #30 .env 経由での API キー管理ロジックの実装
+- [ ] #31 設定画面 UI の実装（プロバイダ選択・API キー入力）
+- [ ] #32 テスト接続機能の実装
+- [ ] #33 セキュリティ設定 UI の実装
+- [ ] #34 API キーがログに出力されないことを確認
+- [ ] #35 パストラバーサル対策の実装・テスト
+- [ ] #36 入力バリデーション（zod）の全エンドポイントへの適用
+- [ ] #37 GitHub Secret Scanning / Dependabot の有効化
+
+### Phase 5 — ストレージ・図管理
+- [ ] #38 ローカルファイル保存機能の実装（JSON 形式）
+- [ ] #39 ブラウザ LocalStorage 保存機能の実装
+- [ ] #40 両ストレージ間の同期ロジックの実装
+- [ ] #41 図一覧表示コンポーネントの実装
+- [ ] #42 図の検索・タグフィルタ機能の実装
+- [ ] #43 図の読み込み・再編集機能の実装
+- [ ] #44 図の削除機能の実装
+- [ ] #45 1000 件保存時のパフォーマンステスト
+
+### Phase 6 — PDF 出力
+- [ ] #46 Puppeteer / Chromium の導入・設定
+- [ ] #47 単一図の PDF 出力機能の実装
+- [ ] #48 複数図をまとめた PDF 出力機能の実装
+- [ ] #49 PDF 表紙（タイトル・日付・説明）の実装
+- [ ] #50 A4 縦横対応の確認・調整
+- [ ] #51 PDF 出力ボタンの UI 実装
+
+### Phase 7 — Electron 対応
+- [ ] #52 Electron プロジェクトのセットアップ
+- [ ] #53 Main Process / Renderer Process の構成設定
+- [ ] #54 preload.ts による安全な IPC 通信の実装
+- [ ] #55 nodeIntegration: false / contextIsolation: true の確認
+- [ ] #56 Content Security Policy（CSP）の設定
+- [ ] #57 electron-builder の設定（Mac .dmg / Windows .exe）
+- [ ] #58 Mac 向けビルド・動作確認
+- [ ] #59 Windows 向けビルド・動作確認
+- [ ] #60 自動アップデート機能の実装（electron-updater）
+- [ ] #61 GitHub Releases へのビルド成果物アップロード
+
+### Phase 8 — ドキュメント・リリース
+- [ ] #62 README.md の作成（インストール手順・セキュリティ注意事項含む）
+- [ ] #63 CONTRIBUTING.md の作成（コントリビュートガイド）
+- [ ] #64 CHANGELOG.md の作成
+- [ ] #65 全ブラウザ（Chrome/Edge/Firefox/Safari）最終テスト
+- [ ] #66 Mac / Windows 両環境での最終動作確認
+- [ ] #67 npm audit 最終チェック・脆弱性ゼロの確認
+- [ ] #68 v1.0.0 タグの作成・GitHub Release の公開
+
+### 今後の拡張案（未 Issue 化）
+- ラック実装図（カスタム SVG レンダラーが必要）
+- クラウドデプロイ対応、チーム協調機能、多言語対応 等
 
 ---
 
