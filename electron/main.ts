@@ -1,8 +1,9 @@
-import { app, BrowserWindow, shell, session } from 'electron';
+import { app, BrowserWindow, shell, session, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { spawn, execFileSync, ChildProcess } from 'child_process';
 import http from 'http';
+import { autoUpdater } from 'electron-updater';
 
 const isDev = !app.isPackaged;
 const NEXT_PORT = 3000;
@@ -184,6 +185,44 @@ async function createMainWindow(): Promise<void> {
   await mainWindow.loadURL(APP_URL);
 }
 
+function setupAutoUpdater(): void {
+  if (!app.isPackaged) return; // 開発環境ではスキップ
+
+  autoUpdater.autoDownload = false; // ユーザー確認後にダウンロード
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'アップデートあり',
+      message: `DiagramBuilder ${info.version} が利用可能です。今すぐダウンロードしますか？`,
+      buttons: ['ダウンロード', '後で'],
+      defaultId: 0,
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.downloadUpdate();
+    });
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'インストール準備完了',
+      message: 'アップデートをインストールするにはアプリを再起動してください。',
+      buttons: ['再起動してインストール', '後で'],
+      defaultId: 0,
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall();
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('Auto updater error:', err.message);
+  });
+
+  // 起動から10秒後にバックグラウンドでチェック（起動直後の負荷を避ける）
+  setTimeout(() => autoUpdater.checkForUpdates(), 10_000);
+}
+
 app.whenReady().then(async () => {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.diagrambuilder.app');
@@ -195,6 +234,7 @@ app.whenReady().then(async () => {
   try {
     await startServers();
     await createMainWindow();
+    setupAutoUpdater();
   } catch (err) {
     console.error('Failed to start servers:', err);
     app.quit();
