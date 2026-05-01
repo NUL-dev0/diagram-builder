@@ -1,17 +1,27 @@
 'use client';
 
-import { useEffect, useRef, useId } from 'react';
+import { useEffect, useRef, useId, useState, useCallback } from 'react';
 
 interface Props {
   code: string;
 }
 
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 5;
+const SCALE_STEP = 0.1;
+
 export default function DiagramPreview({ code }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
   const rawId = useId();
   const stableId = rawId.replace(/:/g, '');
   const mermaidInitialized = useRef(false);
   const renderCounter = useRef(0);
+
+  const [scale, setScale] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const isPanning = useRef(false);
+  const panStart = useRef({ mx: 0, my: 0, tx: 0, ty: 0 });
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -43,14 +53,12 @@ export default function DiagramPreview({ code }: Props) {
         renderCounter.current += 1;
         const renderId = `mermaid-${stableId}-${renderCounter.current}`;
 
-        // 同IDの残留要素をレンダリング前後に削除（HMR や再マウント時の衝突を防ぐ）
         document.getElementById(renderId)?.remove();
         const { svg, bindFunctions } = await mermaid.render(renderId, trimmed);
         document.getElementById(renderId)?.remove();
 
         if (cancelled || !containerRef.current) return;
 
-        // foreignObject: flowchart/class/state 系がラベルを HTML として描画するため必要
         const sanitized = DOMPurify.sanitize(svg, {
           USE_PROFILES: { svg: true, svgFilters: true },
           ADD_TAGS: ['style', 'foreignObject'],
@@ -58,7 +66,6 @@ export default function DiagramPreview({ code }: Props) {
         });
         containerRef.current.innerHTML = sanitized;
 
-        // SVG内styleを注入してレイアウト・配色を調整
         const svgEl = containerRef.current.querySelector('svg');
         if (svgEl) {
           const labelStyle = document.createElement('style');
@@ -74,8 +81,6 @@ export default function DiagramPreview({ code }: Props) {
 
         if (bindFunctions) bindFunctions(containerRef.current);
 
-        // DOMPurify(svg profile)が foreignObject 内の div を strip するため
-        // XHTML 名前空間で div を再生成し white-space: nowrap を適用する
         svgEl?.querySelectorAll('.node .label foreignObject').forEach((fo) => {
           (fo as SVGForeignObjectElement).style.overflow = 'visible';
           let div = fo.querySelector('div') as HTMLElement | null;
@@ -88,7 +93,6 @@ export default function DiagramPreview({ code }: Props) {
           div.style.width = 'max-content';
         });
 
-        // マインドマップ: ルートノード（section-root）の円背景を薄い青に上書き
         const rootCircle = containerRef.current?.querySelector('.section-root .node-bkg') as SVGElement | null;
         if (rootCircle) {
           rootCircle.style.setProperty('fill', '#bfdbfe', 'important');
@@ -106,13 +110,95 @@ export default function DiagramPreview({ code }: Props) {
     };
   }, [code, stableId]);
 
+  // ホイールズーム（non-passive でデフォルトスクロールを防ぐ）
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setScale((prev) => {
+        const delta = e.deltaY < 0 ? SCALE_STEP : -SCALE_STEP;
+        return Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.round((prev + delta) * 100) / 100));
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    isPanning.current = true;
+    panStart.current = { mx: e.clientX, my: e.clientY, tx: translate.x, ty: translate.y };
+  }, [translate]);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isPanning.current) return;
+      const dx = e.clientX - panStart.current.mx;
+      const dy = e.clientY - panStart.current.my;
+      setTranslate({ x: panStart.current.tx + dx, y: panStart.current.ty + dy });
+    };
+    const onUp = () => { isPanning.current = false; };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  const resetView = () => { setScale(1); setTranslate({ x: 0, y: 0 }); };
+
   return (
-    <div className="flex-1 overflow-auto bg-white min-h-0">
+    <div
+      ref={outerRef}
+      className="flex-1 overflow-hidden bg-white min-h-0 relative select-none"
+      onMouseDown={handleMouseDown}
+      style={{ cursor: isPanning.current ? 'grabbing' : 'grab' }}
+    >
       <div
-        ref={containerRef}
-        className="diagram-preview p-4 flex items-center justify-center min-h-full"
-        style={{ color: '#333333' }}
-      />
+        style={{
+          transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+          transformOrigin: 'center',
+          width: '100%',
+          height: '100%',
+        }}
+      >
+        <div
+          ref={containerRef}
+          className="diagram-preview p-4 flex items-center justify-center min-h-full"
+          style={{ color: '#333333' }}
+        />
+      </div>
+
+      {/* ズームコントロール */}
+      <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-white/90 border rounded shadow-sm px-1.5 py-1">
+        <button
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => setScale((s) => Math.min(MAX_SCALE, Math.round((s + SCALE_STEP) * 100) / 100))}
+          className="w-6 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded text-sm font-bold"
+          title="拡大"
+        >＋</button>
+        <span
+          className="text-xs text-gray-500 w-10 text-center cursor-default select-none"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => setScale((s) => Math.max(MIN_SCALE, Math.round((s - SCALE_STEP) * 100) / 100))}
+          className="w-6 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded text-sm font-bold"
+          title="縮小"
+        >－</button>
+        <div className="w-px h-4 bg-gray-200 mx-0.5" />
+        <button
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={resetView}
+          className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded text-sm"
+          title="リセット"
+        >⊙</button>
+      </div>
     </div>
   );
 }

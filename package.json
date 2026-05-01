@@ -48,7 +48,10 @@
       {
         "from": "backend/node_modules",
         "to": "backend/node_modules",
-        "filter": ["**/*", "!puppeteer/.local-chromium/**/*"]
+        "filter": [
+          "**/*",
+          "!puppeteer/.local-chromium/**/*"
+        ]
       },
       {
         "from": "backend/package.json",
@@ -58,16 +61,30 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
-        { "target": "dmg", "arch": ["arm64", "x64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ]
     },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     }
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@types/dompurify": "^3.0.5",
     "@uiw/react-codemirror": "^4.25.9",
     "dompurify": "^3.4.2",

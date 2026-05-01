@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+type GenerationPhase = 'idle' | 'generating' | 'done' | 'error';
+
 const PROVIDERS = [
   { value: 'anthropic', label: 'Claude' },
   { value: 'openai', label: 'OpenAI' },
@@ -15,7 +17,8 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   onGenerate: () => void;
-  isGenerating: boolean;
+  generationPhase: GenerationPhase;
+  generationError?: string | null;
   apiKeyConfigured: boolean;
   provider: string;
   onProviderChange: (provider: string) => void;
@@ -23,9 +26,10 @@ interface Props {
 }
 
 export default function RequirementsForm({
-  value, onChange, onGenerate, isGenerating, apiKeyConfigured, provider, onProviderChange, keyStatus,
+  value, onChange, onGenerate, generationPhase, generationError, apiKeyConfigured, provider, onProviderChange, keyStatus,
 }: Props) {
   const [open, setOpen] = useState(true);
+  const isGenerating = generationPhase === 'generating';
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -34,10 +38,36 @@ export default function RequirementsForm({
     }
   };
 
+  const buttonContent = () => {
+    switch (generationPhase) {
+      case 'generating':
+        return (
+          <span className="flex items-center justify-center gap-2">
+            <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            生成中...
+          </span>
+        );
+      case 'done':
+        return <span className="flex items-center justify-center gap-1.5">✓ 生成完了</span>;
+      case 'error':
+        return <span className="flex items-center justify-center gap-1.5">✗ エラー</span>;
+      default:
+        return '生成';
+    }
+  };
+
+  const buttonClass = () => {
+    const base = 'mt-2 w-full py-2 text-sm rounded font-medium transition-colors disabled:cursor-not-allowed';
+    switch (generationPhase) {
+      case 'done':   return `${base} bg-green-600 text-white`;
+      case 'error':  return `${base} bg-red-600 text-white`;
+      default:       return `${base} bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50`;
+    }
+  };
+
   return (
     <div className="p-3 border-t">
       <div className="flex items-center gap-1.5 mb-2">
-        {/* タイトル */}
         <button
           onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hover:text-gray-700 shrink-0"
@@ -45,7 +75,6 @@ export default function RequirementsForm({
           AI 生成
         </button>
 
-        {/* プロバイダ選択 */}
         <select
           value={provider}
           onChange={(e) => onProviderChange(e.target.value)}
@@ -61,14 +90,12 @@ export default function RequirementsForm({
           })}
         </select>
 
-        {/* 設定状態バッジ */}
         <span className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
           apiKeyConfigured ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
         }`}>
           {apiKeyConfigured ? '✓' : '⚠'}
         </span>
 
-        {/* 開閉トグル */}
         <button
           onClick={() => setOpen((v) => !v)}
           className="shrink-0 text-gray-400 hover:text-gray-600 text-xs"
@@ -98,10 +125,15 @@ export default function RequirementsForm({
           <button
             onClick={onGenerate}
             disabled={isGenerating || !value.trim() || !apiKeyConfigured}
-            className="mt-2 w-full py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+            className={buttonClass()}
           >
-            {isGenerating ? '生成中...' : '生成'}
+            {buttonContent()}
           </button>
+          {generationError && generationPhase === 'error' && (
+            <div className="mt-1.5 px-2 py-1.5 bg-red-50 border border-red-200 rounded text-xs text-red-700 leading-relaxed break-all">
+              {generationError}
+            </div>
+          )}
         </>
       )}
     </div>

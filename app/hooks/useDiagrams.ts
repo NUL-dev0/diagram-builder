@@ -16,6 +16,7 @@ export interface SavedDiagram {
 }
 
 const LS_KEY = 'diagrambuilder:diagrams';
+const LS_FOLDER_ORDER_KEY = 'diagrambuilder:folderOrder';
 
 function readLocalStorage(): SavedDiagram[] {
   try {
@@ -35,6 +36,9 @@ function writeLocalStorage(diagrams: SavedDiagram[]): void {
 export function useDiagrams() {
   const [diagrams, setDiagrams] = useState<SavedDiagram[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [folderOrder, setFolderOrder] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(LS_FOLDER_ORDER_KEY) ?? '[]'); } catch { return []; }
+  });
 
   // 起動時: バックエンドから取得 → LocalStorage とマージ
   useEffect(() => {
@@ -173,5 +177,10 @@ export function useDiagrams() {
     });
   }, []);
 
-  return { diagrams, isLoading, saveDiagram, deleteDiagram, moveDiagram, updateDiagramMeta };
+  const reorderFolders = useCallback((ordered: string[]) => {
+    setFolderOrder(ordered);
+    localStorage.setItem(LS_FOLDER_ORDER_KEY, JSON.stringify(ordered));
+  }, []);
+
+  return { diagrams, isLoading, saveDiagram, deleteDiagram, moveDiagram, updateDiagramMeta, folderOrder, reorderFolders };
 }

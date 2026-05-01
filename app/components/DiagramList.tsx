@@ -1,6 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { SavedDiagram } from '../hooks/useDiagrams';
 
 interface Props {
@@ -9,6 +15,8 @@ interface Props {
   onDelete: (id: string) => void;
   onMove: (id: string, folder: string) => void;
   onUpdate: (id: string, data: { name?: string; folder?: string }) => void;
+  folderOrder: string[];
+  onReorderFolders: (ordered: string[]) => void;
 }
 
 type SortKey = 'updatedAt' | 'name' | 'type';
@@ -32,7 +40,27 @@ function formatDate(iso: string): string {
   return `${mm}/${dd} ${hh}:${min}`;
 }
 
-export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUpdate }: Props) {
+function SortableFolderItem({ id, children }: { id: string; children: (dragHandle: React.ReactNode) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  const handle = (
+    <span
+      {...attributes}
+      {...listeners}
+      className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 px-0.5 shrink-0 touch-none"
+      title="ドラッグして並び替え"
+    >
+      ⠿
+    </span>
+  );
+  return <div ref={setNodeRef} style={style}>{children(handle)}</div>;
+}
+
+export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUpdate, folderOrder, onReorderFolders }: Props) {
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<SavedDiagram | null>(null);
@@ -43,6 +71,8 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUp
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [movePopover, setMovePopover] = useState<string | null>(null);
   const [newFolderInput, setNewFolderInput] = useState('');
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const sorted = [...diagrams].sort((a, b) => {
     if (sortKey === 'updatedAt') return b.updatedAt.localeCompare(a.updatedAt);
@@ -55,15 +85,21 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUp
     d.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const allFolders = Array.from(
-    new Set(diagrams.map((d) => d.folder ?? '').filter(Boolean))
-  ).sort((a, b) => a.localeCompare(b, 'ja'));
+  const allFolderNames = Array.from(new Set(diagrams.map((d) => d.folder ?? '').filter(Boolean)));
 
-  const folderKeys = Array.from(new Set(filtered.map((d) => d.folder ?? ''))).sort((a, b) => {
-    if (a === '') return 1;
-    if (b === '') return -1;
-    return a.localeCompare(b, 'ja');
+  // folderOrder に従って並び替え（未登録フォルダはアルファベット順で末尾）
+  const namedFolders = allFolderNames.sort((a, b) => {
+    const ai = folderOrder.indexOf(a);
+    const bi = folderOrder.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b, 'ja');
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
   });
+
+  // 未分類（folder === ''）は末尾
+  const hasUncategorized = filtered.some((d) => !d.folder);
+  const folderKeys = [...namedFolders, ...(hasUncategorized ? [''] : [])];
 
   const toggleFolder = (key: string) => {
     setCollapsedFolders((prev) => {
@@ -89,6 +125,15 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUp
     if (!editTarget || !editName.trim()) return;
     onUpdate(editTarget.id, { name: editName.trim(), folder: editFolder.trim() });
     setEditTarget(null);
+  };
+
+  const handleFolderDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = namedFolders.indexOf(String(active.id));
+    const newIndex = namedFolders.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    onReorderFolders(arrayMove(namedFolders, oldIndex, newIndex));
   };
 
   return (
@@ -136,118 +181,92 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUp
             </p>
           ) : (
             <div className="overflow-y-auto flex-1 pr-1 space-y-1">
-              {folderKeys.map((folderKey) => {
-                const items = filtered.filter((d) => (d.folder ?? '') === folderKey);
-                const isCollapsed = collapsedFolders.has(folderKey);
-                return (
-                  <div key={folderKey}>
-                    <button
-                      onClick={() => toggleFolder(folderKey)}
-                      className="w-full flex items-center gap-1 text-xs text-gray-500 font-semibold py-1 hover:text-gray-700"
-                    >
-                      <span className="text-gray-400">{isCollapsed ? '▶' : '▼'}</span>
-                      <span>📁 {folderKey || '未分類'}</span>
-                      <span className="text-gray-400 font-normal">({items.length})</span>
-                    </button>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleFolderDragEnd}>
+                <SortableContext items={namedFolders} strategy={verticalListSortingStrategy}>
+                  {folderKeys.map((folderKey) => {
+                    const items = filtered.filter((d) => (d.folder ?? '') === folderKey);
+                    if (items.length === 0) return null;
+                    const isCollapsed = collapsedFolders.has(folderKey);
+                    const isNamed = folderKey !== '';
 
-                    {!isCollapsed && (
-                      <ul className="space-y-0.5 ml-3 mb-1">
-                        {items.map((d) => (
-                          <li key={d.id} className="group relative flex items-center gap-1">
-                            <button
-                              onClick={() => onSelect(d)}
-                              className="flex-1 text-left px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded min-w-0"
-                              title={d.name}
-                            >
-                              <span className="block truncate">{d.name}</span>
-                              <span className="text-gray-400">
-                                {TYPE_LABELS[d.type] ?? d.type}
-                                <span className="ml-1">{formatDate(d.updatedAt)}</span>
-                              </span>
-                            </button>
+                    const folderContent = (dragHandle: React.ReactNode) => (
+                      <div key={folderKey}>
+                        <div className="flex items-center gap-0.5">
+                          {isNamed && dragHandle}
+                          <button
+                            onClick={() => toggleFolder(folderKey)}
+                            className="flex-1 flex items-center gap-1 text-xs text-gray-500 font-semibold py-1 hover:text-gray-700 min-w-0"
+                          >
+                            <span className="text-gray-400">{isCollapsed ? '▶' : '▼'}</span>
+                            <span className="truncate">📁 {folderKey || '未分類'}</span>
+                            <span className="text-gray-400 font-normal shrink-0">({items.length})</span>
+                          </button>
+                        </div>
 
-                            {/* 編集 */}
-                            <button
-                              onClick={() => openEdit(d)}
-                              className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-green-600 transition-opacity rounded text-xs shrink-0"
-                              title="編集"
-                            >
-                              ✏️
-                            </button>
+                        {!isCollapsed && (
+                          <ul className="space-y-0.5 ml-3 mb-1">
+                            {items.map((d) => (
+                              <li key={d.id} className="group relative flex items-center gap-1">
+                                <button
+                                  onClick={() => onSelect(d)}
+                                  className="flex-1 text-left px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded min-w-0"
+                                  title={d.name}
+                                >
+                                  <span className="block truncate">{d.name}</span>
+                                  <span className="text-gray-400">
+                                    {TYPE_LABELS[d.type] ?? d.type}
+                                    <span className="ml-1">{formatDate(d.updatedAt)}</span>
+                                  </span>
+                                </button>
 
-                            {/* フォルダ移動 */}
-                            <button
-                              onClick={() => {
-                                setMovePopover(movePopover === d.id ? null : d.id);
-                                setNewFolderInput('');
-                              }}
-                              className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-blue-500 transition-opacity rounded text-xs shrink-0"
-                              title="フォルダに移動"
-                            >
-                              📁
-                            </button>
+                                <button onClick={() => openEdit(d)} className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-green-600 transition-opacity rounded text-xs shrink-0" title="編集">✏️</button>
 
-                            {/* 削除 */}
-                            <button
-                              onClick={() => setDeleteTarget(d.id)}
-                              className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-red-500 transition-opacity rounded text-xs shrink-0"
-                              title="削除"
-                            >
-                              ✕
-                            </button>
+                                <button
+                                  onClick={() => { setMovePopover(movePopover === d.id ? null : d.id); setNewFolderInput(''); }}
+                                  className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-blue-500 transition-opacity rounded text-xs shrink-0"
+                                  title="フォルダに移動"
+                                >📁</button>
 
-                            {/* フォルダ移動ポップオーバー */}
-                            {movePopover === d.id && (
-                              <>
-                                <div className="fixed inset-0 z-10" onClick={() => setMovePopover(null)} />
-                                <div className="absolute right-0 top-full z-20 bg-white border rounded shadow-lg p-2 text-xs" style={{ width: '160px' }}>
-                                  <p className="font-semibold text-gray-600 mb-1">移動先フォルダ</p>
-                                  {folderKey !== '' && (
-                                    <button
-                                      onClick={() => handleMove(d.id, '')}
-                                      className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded text-gray-500"
-                                    >
-                                      未分類
-                                    </button>
-                                  )}
-                                  {allFolders.filter((f) => f !== folderKey).map((f) => (
-                                    <button
-                                      key={f}
-                                      onClick={() => handleMove(d.id, f)}
-                                      className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded truncate"
-                                    >
-                                      {f}
-                                    </button>
-                                  ))}
-                                  <div className="flex gap-1 mt-1 pt-1 border-t">
-                                    <input
-                                      value={newFolderInput}
-                                      onChange={(e) => setNewFolderInput(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && newFolderInput.trim()) handleMove(d.id, newFolderInput.trim());
-                                      }}
-                                      placeholder="新規フォルダ名"
-                                      className="min-w-0 flex-1 px-1 py-0.5 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                      autoFocus
-                                    />
-                                    <button
-                                      onClick={() => { if (newFolderInput.trim()) handleMove(d.id, newFolderInput.trim()); }}
-                                      disabled={!newFolderInput.trim()}
-                                      className="shrink-0 px-1.5 py-0.5 bg-blue-600 text-white rounded disabled:opacity-50"
-                                    >
-                                      ✓
-                                    </button>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
+                                <button onClick={() => setDeleteTarget(d.id)} className="opacity-0 group-hover:opacity-100 px-1.5 py-1 text-gray-400 hover:text-red-500 transition-opacity rounded text-xs shrink-0" title="削除">✕</button>
+
+                                {movePopover === d.id && (
+                                  <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setMovePopover(null)} />
+                                    <div className="absolute right-0 top-full z-20 bg-white border rounded shadow-lg p-2 text-xs" style={{ width: '160px' }}>
+                                      <p className="font-semibold text-gray-600 mb-1">移動先フォルダ</p>
+                                      {folderKey !== '' && (
+                                        <button onClick={() => handleMove(d.id, '')} className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded text-gray-500">未分類</button>
+                                      )}
+                                      {allFolderNames.filter((f) => f !== folderKey).map((f) => (
+                                        <button key={f} onClick={() => handleMove(d.id, f)} className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded truncate">{f}</button>
+                                      ))}
+                                      <div className="flex gap-1 mt-1 pt-1 border-t">
+                                        <input
+                                          value={newFolderInput}
+                                          onChange={(e) => setNewFolderInput(e.target.value)}
+                                          onKeyDown={(e) => { if (e.key === 'Enter' && newFolderInput.trim()) handleMove(d.id, newFolderInput.trim()); }}
+                                          placeholder="新規フォルダ名"
+                                          className="min-w-0 flex-1 px-1 py-0.5 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                          autoFocus
+                                        />
+                                        <button onClick={() => { if (newFolderInput.trim()) handleMove(d.id, newFolderInput.trim()); }} disabled={!newFolderInput.trim()} className="shrink-0 px-1.5 py-0.5 bg-blue-600 text-white rounded disabled:opacity-50">✓</button>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+
+                    return isNamed
+                      ? <SortableFolderItem key={folderKey} id={folderKey}>{folderContent}</SortableFolderItem>
+                      : <div key="">{folderContent(null)}</div>;
+                  })}
+                </SortableContext>
+              </DndContext>
             </div>
           )}
         </>
@@ -259,38 +278,14 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUp
           <div className="bg-white rounded-lg shadow-xl p-5 max-w-xs w-full mx-4">
             <h2 className="text-sm font-semibold text-gray-800 mb-3">図の編集</h2>
             <label className="block text-xs text-gray-500 mb-1">名前</label>
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleEditSave()}
-              autoFocus
-              className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-3"
-            />
+            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleEditSave()} autoFocus className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-3" />
             <label className="block text-xs text-gray-500 mb-1">フォルダ</label>
-            <input
-              type="text"
-              list="edit-folder-list"
-              value={editFolder}
-              onChange={(e) => setEditFolder(e.target.value)}
-              placeholder="フォルダ名（省略可）"
-              className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-1"
-            />
-            <datalist id="edit-folder-list">
-              {allFolders.map((f) => <option key={f} value={f} />)}
-            </datalist>
-            <p className="text-xs text-gray-400 mb-4">
-              更新日時: {formatDate(editTarget.updatedAt)}
-            </p>
+            <input type="text" list="edit-folder-list" value={editFolder} onChange={(e) => setEditFolder(e.target.value)} placeholder="フォルダ名（省略可）" className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-1" />
+            <datalist id="edit-folder-list">{allFolderNames.map((f) => <option key={f} value={f} />)}</datalist>
+            <p className="text-xs text-gray-400 mb-4">更新日時: {formatDate(editTarget.updatedAt)}</p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setEditTarget(null)} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50 text-gray-700">キャンセル</button>
-              <button
-                onClick={handleEditSave}
-                disabled={!editName.trim()}
-                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                保存
-              </button>
+              <button onClick={handleEditSave} disabled={!editName.trim()} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">保存</button>
             </div>
           </div>
         </div>
@@ -303,12 +298,7 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUp
             <p className="text-sm text-gray-700 mb-4">この図を削除しますか？</p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setDeleteTarget(null)} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50 text-gray-700">キャンセル</button>
-              <button
-                onClick={() => { onDelete(deleteTarget); setDeleteTarget(null); }}
-                className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                削除
-              </button>
+              <button onClick={() => { onDelete(deleteTarget); setDeleteTarget(null); }} className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700">削除</button>
             </div>
           </div>
         </div>

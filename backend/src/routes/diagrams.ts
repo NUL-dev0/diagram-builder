@@ -92,8 +92,17 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 function extractMermaidCode(raw: string): string {
-  const match = raw.match(/```(?:mermaid)?\n?([\s\S]*?)```/);
-  return (match ? match[1] : raw).trim();
+  // コードブロック（```mermaid ... ``` または ``` ... ```）を優先
+  const blockMatch = raw.match(/```(?:mermaid)?\s*\n?([\s\S]*?)```/);
+  if (blockMatch) return blockMatch[1].trim();
+
+  // コードブロックがない場合、Mermaid キーワードを行頭から探す
+  const kwMatch = raw.match(
+    /((?:graph|flowchart|sequenceDiagram|classDiagram|erDiagram|gantt|mindmap|stateDiagram-v2|stateDiagram|gitGraph|pie|quadrantChart|xychart-beta|block-beta|architecture-beta|requirementDiagram)[\s\S]*)/m
+  );
+  if (kwMatch) return kwMatch[1].trim();
+
+  return raw.trim();
 }
 
 export default router;

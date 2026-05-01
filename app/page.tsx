@@ -23,11 +23,13 @@ export default function Home() {
   const [cleanCode, setCleanCode] = useState(DEFAULT_MERMAID_CODES.architecture);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  type GenerationPhase = 'idle' | 'generating' | 'done' | 'error';
+  const [generationPhase, setGenerationPhase] = useState<GenerationPhase>('idle');
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveNameInput, setSaveNameInput] = useState('');
   const [saveFolderInput, setSaveFolderInput] = useState('');
-  const { diagrams, saveDiagram, deleteDiagram, moveDiagram, updateDiagramMeta } = useDiagrams();
+  const { diagrams, saveDiagram, deleteDiagram, moveDiagram, updateDiagramMeta, folderOrder, reorderFolders } = useDiagrams();
   const [editorHeight, setEditorHeight] = useState(192);
   const [editorVisible, setEditorVisible] = useState(true);
   const [showSecurityDialog, setShowSecurityDialog] = useState(false);
@@ -119,13 +121,14 @@ export default function Home() {
   };
 
   const handleGenerate = () => {
-    if (!requirements.trim() || isGenerating) return;
+    if (!requirements.trim() || generationPhase === 'generating') return;
     setShowSecurityDialog(true);
   };
 
   const handleGenerateConfirmed = async () => {
     setShowSecurityDialog(false);
-    setIsGenerating(true);
+    setGenerationPhase('generating');
+    setGenerationError(null);
     try {
       const res = await fetch('/api/diagrams/generate', {
         method: 'POST',
@@ -140,13 +143,17 @@ export default function Home() {
       const data = await res.json();
       if (data.success) {
         setMermaidCode(data.mermaidCode);
+        setGenerationPhase('done');
+        setTimeout(() => setGenerationPhase('idle'), 2500);
       } else {
-        alert(`生成エラー: ${data.error}`);
+        setGenerationError(data.error ?? '生成に失敗しました');
+        setGenerationPhase('error');
+        setTimeout(() => { setGenerationPhase('idle'); setGenerationError(null); }, 8000);
       }
-    } catch {
-      alert('バックエンドへの接続に失敗しました。サーバが起動しているか確認してください。');
-    } finally {
-      setIsGenerating(false);
+    } catch (err) {
+      setGenerationError(err instanceof Error ? err.message : '生成に失敗しました');
+      setGenerationPhase('error');
+      setTimeout(() => { setGenerationPhase('idle'); setGenerationError(null); }, 8000);
     }
   };
 
@@ -284,13 +291,14 @@ export default function Home() {
             value={requirements}
             onChange={setRequirements}
             onGenerate={handleGenerate}
-            isGenerating={isGenerating}
+            generationPhase={generationPhase}
+            generationError={generationError}
             apiKeyConfigured={apiKeyConfigured}
             provider={provider}
             onProviderChange={setProvider}
             keyStatus={keyStatus}
           />
-          <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={deleteDiagram} onMove={moveDiagram} onUpdate={updateDiagramMeta} />
+          <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={deleteDiagram} onMove={moveDiagram} onUpdate={updateDiagramMeta} folderOrder={folderOrder} onReorderFolders={reorderFolders} />
         </aside>
 
         {/* 右パネル */}

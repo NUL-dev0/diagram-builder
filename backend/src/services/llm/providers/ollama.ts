@@ -24,21 +24,21 @@ export class OllamaProvider implements LLMProvider {
 
   async generate(prompt: string, model?: string): Promise<string> {
     const resolvedModel = await this.resolveModel(model);
-    const response = await axios.post(`${this.baseUrl}/api/generate`, {
-      model: resolvedModel,
-      prompt,
-      stream: false,
-    });
+    const response = await axios.post(
+      `${this.baseUrl}/api/generate`,
+      { model: resolvedModel, prompt, stream: false },
+      { timeout: 300_000 }
+    );
     return response.data.response as string;
   }
 
   async testConnection(model?: string): Promise<boolean> {
     const resolvedModel = await this.resolveModel(model);
-    await axios.post(`${this.baseUrl}/api/generate`, {
-      model: resolvedModel,
-      prompt: 'ping',
-      stream: false,
-    });
+    await axios.post(
+      `${this.baseUrl}/api/generate`,
+      { model: resolvedModel, prompt: 'ping', stream: false },
+      { timeout: 30_000 }
+    );
     return true;
   }
 }
