@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell, session } from 'electron';
 import path from 'path';
-import { spawn, ChildProcess } from 'child_process';
+import fs from 'fs';
+import { spawn, execFileSync, ChildProcess } from 'child_process';
 import http from 'http';
 
 const isDev = !app.isPackaged;
@@ -12,6 +13,32 @@ const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 let mainWindow: BrowserWindow | null = null;
 let loadingWindow: BrowserWindow | null = null;
 const childProcesses: ChildProcess[] = [];
+
+// パッケージ済みアプリは PATH が限定されるため node の実パスを解決する
+function resolveNodePath(): string {
+  const candidates =
+    process.platform === 'win32'
+      ? ['node.exe', 'C:\\Program Files\\nodejs\\node.exe']
+      : [
+        '/opt/homebrew/bin/node',   // Homebrew ARM (Apple Silicon)
+        '/usr/local/bin/node',       // Homebrew Intel / nvm default symlink
+        '/usr/bin/node',             // システム node
+      ];
+
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // which コマンドで探す（最終手段）
+  try {
+    const extra = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin';
+    return execFileSync('/usr/bin/env', ['which', 'node'], {
+      env: { PATH: extra },
+    }).toString().trim();
+  } catch {
+    return 'node';
+  }
+}
 
 function waitForPort(port: number, urlPath = '/', timeoutMs = 90000): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -38,10 +65,15 @@ function waitForPort(port: number, urlPath = '/', timeoutMs = 90000): Promise<vo
 }
 
 function spawnChild(cmd: string, args: string[], cwd: string): ChildProcess {
+  const extraPath = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin';
+  const currentPath = process.env.PATH ?? '';
   const child = spawn(cmd, args, {
     cwd,
     stdio: 'ignore',
-    env: { ...process.env },
+    env: {
+      ...process.env,
+      PATH: `${extraPath}:${currentPath}`,
+    },
     shell: process.platform === 'win32',
   });
   childProcesses.push(child);
@@ -57,9 +89,10 @@ async function startServers(): Promise<void> {
     spawnChild(npm, ['run', 'dev'], backendDir);
   } else {
     // Production: Next.js standalone + compiled backend
+    const node = resolveNodePath();
     const backendDir = path.join(process.resourcesPath, 'backend');
-    spawnChild('node', ['.next/standalone/server.js'], root);
-    spawnChild('node', ['dist/app.js'], backendDir);
+    spawnChild(node, ['.next/standalone/server.js'], root);
+    spawnChild(node, ['dist/app.js'], backendDir);
   }
 
   await Promise.all([
