@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9"/>
+      <stop offset="50%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="letter5" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#e0e7ff"/>
+    </linearGradient>
+    <filter id="softglow5">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+
+  <!-- Background: Option 3 gradient -->
+  <rect width="512" height="512" rx="100" ry="100" fill="url(#bg5)"/>
+
+  <!-- Subtle grid (Option 3) -->
+  <g opacity="0.06" stroke="white" stroke-width="1.5">
+    <line x1="128" y1="0" x2="128" y2="512"/>
+    <line x1="256" y1="0" x2="256" y2="512"/>
+    <line x1="384" y1="0" x2="384" y2="512"/>
+    <line x1="0" y1="128" x2="512" y2="128"/>
+    <line x1="0" y1="256" x2="512" y2="256"/>
+    <line x1="0" y1="384" x2="512" y2="384"/>
+  </g>
+
+  <!-- Option 2 constellation: lines (faint) -->
+  <g stroke="white" stroke-linecap="round" opacity="0.22">
+    <line x1="160" y1="120" x2="352" y2="155" stroke-width="2"/>
+    <line x1="160" y1="120" x2="110" y2="310" stroke-width="2"/>
+    <line x1="352" y1="155" x2="400" y2="340" stroke-width="2"/>
+    <line x1="110" y1="310" x2="256" y2="400" stroke-width="1.5"/>
+    <line x1="400" y1="340" x2="256" y2="400" stroke-width="1.5"/>
+    <line x1="160" y1="120" x2="256" y2="400" stroke-width="1"/>
+    <line x1="352" y1="155" x2="110" y2="310" stroke-width="1"/>
+  </g>
+
+  <!-- Option 2 constellation: node glow halos (very faint) -->
+  <circle cx="160" cy="120" r="28" fill="white" opacity="0.12" filter="url(#softglow5)"/>
+  <circle cx="352" cy="155" r="22" fill="white" opacity="0.12" filter="url(#softglow5)"/>
+  <circle cx="110" cy="310" r="20" fill="white" opacity="0.12" filter="url(#softglow5)"/>
+  <circle cx="400" cy="340" r="28" fill="white" opacity="0.12" filter="url(#softglow5)"/>
+  <circle cx="256" cy="400" r="20" fill="white" opacity="0.10" filter="url(#softglow5)"/>
+
+  <!-- Option 2 constellation: nodes (subtle) -->
+  <circle cx="160" cy="120" r="12" fill="white" opacity="0.30"/>
+  <circle cx="352" cy="155" r="9"  fill="white" opacity="0.28"/>
+  <circle cx="110" cy="310" r="8"  fill="white" opacity="0.25"/>
+  <circle cx="400" cy="340" r="12" fill="white" opacity="0.30"/>
+  <circle cx="256" cy="400" r="8"  fill="white" opacity="0.22"/>
+
+  <!-- "DB" letters: clearly visible (Option 3) -->
+  <text x="60" y="330" font-family="Georgia,serif" font-size="290" font-weight="900"
+        fill="url(#letter5)" opacity="0.95">DB</text>
+
+  <!-- Accent underline (Option 3) -->
+  <rect x="80" y="350" width="352" height="12" rx="6" fill="white" opacity="0.35"/>
+</svg>

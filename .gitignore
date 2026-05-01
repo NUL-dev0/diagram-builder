@@ -17,8 +17,14 @@
 /.next/
 /out/
 
-# production
-/build
+# production (Next.js export)
+/out
+
+# electron-builder icon intermediates
+/build/icon.iconset/
+/build/icon-1024.png
+/build/icon-option-*.svg.png
+/build/icon-option-[1-4].svg
 
 # misc
 .DS_Store
