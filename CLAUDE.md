@@ -9,7 +9,7 @@
 - **Phase 4: 完了** ✅
 - **Phase 5: 完了** ✅
 - **Phase 6: 完了** ✅
-- **Phase 7: 進行中** 🔄 (#52〜#57 完了、#74〜#76 完了、#58〜#61 未着手)
+- **Phase 7: 進行中** 🔄 (#52〜#57 完了、#74〜#76 完了、#58 完了、#59〜#61 未着手)
 - **Phase 8: 未着手**
 
 ---
@@ -90,7 +90,7 @@
 - [x] #55 nodeIntegration: false / contextIsolation: true の確認
 - [x] #56 Content Security Policy（CSP）の設定
 - [x] #57 electron-builder の設定（Mac .dmg / Windows .exe）
-- [ ] #58 Mac 向けビルド・動作確認
+- [x] #58 Mac 向けビルド・動作確認
 - [ ] #59 Windows 向けビルド・動作確認
 - [ ] #60 自動アップデート機能の実装（electron-updater）
 - [ ] #61 GitHub Releases へのビルド成果物アップロード
@@ -115,6 +115,8 @@
 - #75 フォルダのドラッグ＆ドロップ並び替え（dnd-kit）、folderOrder を localStorage で永続化
 - #76 プレビューのズーム・パン（ホイールズーム、ドラッグパン、±/リセットボタン）
 - Ollama: タイムアウト設定（生成5分・テスト30秒）、LLM 出力からの Mermaid コード抽出を堅牢化
+- #58 Macビルド対応: node パス解決（ENOENT修正）、Next.js standalone 静的ファイルコピー、DMG背景修正
+- セキュリティ: Next.js 14→16.2.4（high CVE解消）、React 18→19、backend typescript-eslint更新、CI audit --omit=dev 対応
 
 ### 今後の拡張案（未 Issue 化）
 - ラック実装図（カスタム SVG レンダラーが必要）
