@@ -49,6 +49,7 @@ export default function PdfExportDialog({ currentCode, currentType, diagrams, on
   const [coverTitle, setCoverTitle] = useState('DiagramBuilder 図面集');
   const [isExporting, setIsExporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isBackendDown, setIsBackendDown] = useState(false);
 
   const folderKeys = Array.from(new Set(diagrams.map((d) => d.folder ?? ''))).sort((a, b) => {
     if (a === '') return 1;
@@ -79,6 +80,7 @@ export default function PdfExportDialog({ currentCode, currentType, diagrams, on
     if (totalCount === 0) return;
     setIsExporting(true);
     setErrorMsg(null);
+    setIsBackendDown(false);
 
     try {
       const pages: { name: string; type: string; svg: string; updatedAt: string }[] = [];
@@ -104,8 +106,15 @@ export default function PdfExportDialog({ currentCode, currentType, diagrams, on
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? `サーバーエラー (${res.status})`);
+        const data = await res.json().catch(() => null);
+        // data が null (JSON パース失敗) または error フィールドがない → バックエンド未起動
+        const backendDown = data === null || !data.error;
+        if (backendDown) {
+          setIsBackendDown(true);
+          setErrorMsg('バックエンドに接続できません。バックエンドサーバー（npm run dev）を起動してください。');
+          return;
+        }
+        throw new Error(data.error);
       }
 
       const blob = await res.blob();
@@ -118,12 +127,13 @@ export default function PdfExportDialog({ currentCode, currentType, diagrams, on
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'エラーが発生しました';
-      const isNetwork = msg.includes('fetch') || msg.toLowerCase().includes('network') || msg.includes('Failed to fetch');
-      setErrorMsg(
-        isNetwork
-          ? 'バックエンドに接続できません。バックエンドサーバー（npm run dev）を起動してください。'
-          : msg
-      );
+      // fetch 自体が throw した場合もバックエンド未起動として扱う
+      if (msg.includes('Failed to fetch') || msg.includes('fetch') || msg.toLowerCase().includes('network')) {
+        setIsBackendDown(true);
+        setErrorMsg('バックエンドに接続できません。バックエンドサーバー（npm run dev）を起動してください。');
+      } else {
+        setErrorMsg(msg);
+      }
     } finally {
       setIsExporting(false);
     }
@@ -225,7 +235,7 @@ export default function PdfExportDialog({ currentCode, currentType, diagrams, on
           {errorMsg && (
             <div className="bg-red-50 border border-red-200 rounded p-3 text-xs text-red-700 space-y-2">
               <p>{errorMsg}</p>
-              {errorMsg.includes('バックエンド') && (
+              {isBackendDown && (
                 <button
                   onClick={handlePrintFallback}
                   className="underline text-red-600 hover:text-red-800"
