@@ -8,7 +8,8 @@ export type DiagramType =
   | 'gantt'
   | 'mindmap'
   | 'state'
-  | 'graph';
+  | 'graph'
+  | 'network';
 
 export interface DiagramTypeConfig {
   type: DiagramType;
@@ -26,6 +27,7 @@ export const DIAGRAM_TYPES: DiagramTypeConfig[] = [
   { type: 'mindmap', label: 'マインドマップ' },
   { type: 'state', label: '状態遷移図' },
   { type: 'graph', label: 'グラフ・ネットワーク図' },
+  { type: 'network', label: 'ネットワーク構成図' },
 ];
 
 export const DEFAULT_MERMAID_CODES: Record<DiagramType, string> = {
@@ -112,4 +114,24 @@ export const DEFAULT_MERMAID_CODES: Record<DiagramType, string> = {
   B --- C[ノード C]
   C --- D[ノード D]
   A --- D`,
+  network: `graph LR
+    Internet((インターネット))
+    FW[ファイアウォール]
+    SW1[L3スイッチ]
+    WEB[(Webサーバー)]
+    DB[(DBサーバー)]
+    
+    Internet -->|HTTPS:443| FW
+    FW -->|内部| SW1
+    SW1 -->|HTTP:8080| WEB
+    WEB -->|MySQL:3306| DB
+    
+    subgraph DMZ
+        WEB
+    end
+    
+    subgraph 内部ネットワーク
+        DB
+    end`,
+
 };

@@ -9,10 +9,10 @@ interface Props {
 
 export default function MermaidEditor({ value, onChange }: Props) {
   return (
-    <div className="h-full overflow-auto border-t">
+    <div className="h-full overflow-auto border-t" style={{ backgroundColor: '#282c34' }}>
       <CodeMirror
         value={value}
-        height="192px"
+        height="100%"
         onChange={onChange}
         basicSetup={{
           lineNumbers: true,

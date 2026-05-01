@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Header from './components/Header';
 import DiagramTypeSelector from './components/DiagramTypeSelector';
@@ -17,6 +17,53 @@ export default function Home() {
   const [mermaidCode, setMermaidCode] = useState(DEFAULT_MERMAID_CODES.architecture);
   const [isGenerating, setIsGenerating] = useState(false);
   const [savedDiagrams] = useState<SavedDiagram[]>([]);
+  const [editorHeight, setEditorHeight] = useState(192);
+  const [editorVisible, setEditorVisible] = useState(true);
+  const dividerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // ドラッグ中のマウスムーブ処理
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dividerRef.current || !dividerRef.current.dataset.isDragging || dividerRef.current.dataset.isDragging === 'false') {
+        return;
+      }
+
+      const container = containerRef.current;
+      if (!container) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const newEditorHeight = containerRect.bottom - e.clientY;
+
+      // 最小高さ 100px、最大高さ (コンテナ高さ - 100px)
+      const minHeight = 100;
+      const maxHeight = containerRect.height - 100;
+
+      if (newEditorHeight >= minHeight && newEditorHeight <= maxHeight) {
+        setEditorHeight(newEditorHeight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (dividerRef.current) {
+        dividerRef.current.dataset.isDragging = 'false';
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const handleDividerMouseDown = () => {
+    if (dividerRef.current) {
+      dividerRef.current.dataset.isDragging = 'true';
+    }
+  };
 
   const handleTypeChange = (type: DiagramType) => {
     setDiagramType(type);
@@ -62,9 +109,9 @@ export default function Home() {
         </aside>
 
         {/* 右パネル */}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden" ref={containerRef}>
           {/* プレビュー */}
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <DiagramPreview code={mermaidCode} />
           </div>
 
@@ -89,12 +136,30 @@ export default function Home() {
             >
               PDF 出力
             </button>
+            <button
+              onClick={() => setEditorVisible((v) => !v)}
+              className="ml-auto px-3 py-1.5 text-sm border rounded hover:bg-white transition-colors text-gray-700"
+            >
+              {editorVisible ? 'コードを隠す' : 'コードを表示'}
+            </button>
           </div>
 
+          {/* リサイズディバイダー */}
+          {editorVisible && (
+            <div
+              ref={dividerRef}
+              onMouseDown={handleDividerMouseDown}
+              className="h-1 bg-gray-300 hover:bg-blue-500 cursor-row-resize transition-colors shrink-0"
+              data-is-dragging="false"
+            />
+          )}
+
           {/* Mermaid コードエディタ */}
-          <div className="h-48 shrink-0">
-            <MermaidEditor value={mermaidCode} onChange={setMermaidCode} />
-          </div>
+          {editorVisible && (
+            <div style={{ height: `${editorHeight}px` }} className="shrink-0 overflow-hidden flex flex-col">
+              <MermaidEditor value={mermaidCode} onChange={setMermaidCode} />
+            </div>
+          )}
         </main>
       </div>
     </div>
