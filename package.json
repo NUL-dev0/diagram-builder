@@ -14,8 +14,8 @@
     "lint:custom:fix": "eslint \"app/**/*.{ts,tsx}\" --fix --ignore-pattern \"node_modules/\"",
     "electron:compile": "tsc --project tsconfig.electron.json",
     "electron:dev": "npm run electron:compile && electron .",
-    "electron:build": "next build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cd backend && npm run build && cd .. && npm run electron:compile && electron-builder",
-    "electron:release": "next build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cd backend && npm run build && cd .. && npm run electron:compile && electron-builder --publish onTag"
+    "electron:build": "rm -rf dist-electron && next build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cd backend && npm run build && cd .. && npm run electron:compile && electron-builder",
+    "electron:release": "rm -rf dist-electron && next build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cd backend && npm run build && cd .. && npm run electron:compile && electron-builder --publish onTag"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -46,7 +46,8 @@
       "node_modules/**/*",
       "!node_modules/.cache/**/*",
       "!node_modules/electron/**/*",
-      "!node_modules/electron-builder/**/*"
+      "!node_modules/electron-builder/**/*",
+      "!dist-electron/**/*"
     ],
     "extraResources": [
       {
@@ -67,6 +68,7 @@
       }
     ],
     "dmg": {
+      "icon": false,
       "backgroundColor": "#f0f0f0",
       "window": {
         "width": 540,
