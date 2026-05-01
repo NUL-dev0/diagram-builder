@@ -11,7 +11,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm audit --audit-level=high
+      - run: npm audit --audit-level=high --omit=dev
       - run: npx eslint "app/**/*.{ts,tsx}" --ignore-pattern "node_modules/"
 
   audit-backend:

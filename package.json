@@ -124,7 +124,7 @@
     "electron": "^41.4.0",
     "electron-builder": "^26.8.1",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^16.2.4",
+    "eslint-config-next": "^15.5.15",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-security": "^2.1.1",
     "husky": "^9.0.11",
