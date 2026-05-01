@@ -48,4 +48,9 @@ next-env.d.ts
 diagrams/
 
 # API キー・認証情報
-config.jsonfeat: Add sample configuration files and update .gitignore
+config.json
+
+# 内部ドキュメント（AI エージェント・仕様書）
+CLAUDE.md
+AGENTS.md
+SPECIFICATION_*.md
