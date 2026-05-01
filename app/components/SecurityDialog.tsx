@@ -13,6 +13,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   gemini: 'Gemini (Google)',
   ollama: 'Ollama（ローカル・送信なし）',
   azure: 'Azure OpenAI',
+  'openai-compatible': 'カスタムプロバイダ（OpenAI 互換）',
 };
 
 export default function SecurityDialog({ provider, diagramType, onConfirm, onCancel }: Props) {

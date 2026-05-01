@@ -1,4 +1,4 @@
-export type LLMProviderName = 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'azure';
+export type LLMProviderName = 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'azure' | 'openai-compatible';
 
 export interface GenerateRequest {
   diagramType: string;

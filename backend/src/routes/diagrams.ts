@@ -10,7 +10,7 @@ const GenerateSchema = z.object({
   diagramType: z.string().min(1).max(50),
   description: z.string().min(1).max(5000),
   currentCode: z.string().max(10000).optional(),
-  provider: z.enum(['anthropic', 'openai', 'gemini', 'ollama', 'azure']),
+  provider: z.enum(['anthropic', 'openai', 'gemini', 'ollama', 'azure', 'openai-compatible']),
   model: z.string().max(100).optional(),
 });
 

@@ -6,7 +6,7 @@ import { LLMProviderName } from '../services/llm/types';
 const router = Router();
 
 const TestConnectionSchema = z.object({
-  provider: z.enum(['anthropic', 'openai', 'gemini', 'ollama', 'azure']),
+  provider: z.enum(['anthropic', 'openai', 'gemini', 'ollama', 'azure', 'openai-compatible']),
   model: z.string().max(100).optional(),
 });
 
