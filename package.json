@@ -60,10 +60,22 @@
     ],
     "dmg": {
       "backgroundColor": "#f0f0f0",
-      "window": { "width": 540, "height": 380 },
+      "window": {
+        "width": 540,
+        "height": 380
+      },
       "contents": [
-        { "x": 150, "y": 220, "type": "file" },
-        { "x": 390, "y": 220, "type": "link", "path": "/Applications" }
+        {
+          "x": 150,
+          "y": 220,
+          "type": "file"
+        },
+        {
+          "x": 390,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
     "mac": {
@@ -97,9 +109,9 @@
     "@uiw/react-codemirror": "^4.25.9",
     "dompurify": "^3.4.2",
     "mermaid": "^10.9.0",
-    "next": "^14.2.3",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "next": "^16.2.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -112,7 +124,7 @@
     "electron": "^41.4.0",
     "electron-builder": "^26.8.1",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.3",
+    "eslint-config-next": "^16.2.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-security": "^2.1.1",
     "husky": "^9.0.11",
