@@ -32,7 +32,11 @@ export default function DiagramPreview({ code }: Props) {
         ]);
 
         if (!mermaidInitialized.current) {
-          mermaid.initialize({ startOnLoad: false, theme: 'default' });
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: { padding: 24 },
+          });
           mermaidInitialized.current = true;
         }
 
@@ -69,6 +73,20 @@ export default function DiagramPreview({ code }: Props) {
         }
 
         if (bindFunctions) bindFunctions(containerRef.current);
+
+        // DOMPurify(svg profile)が foreignObject 内の div を strip するため
+        // XHTML 名前空間で div を再生成し white-space: nowrap を適用する
+        svgEl?.querySelectorAll('.node .label foreignObject').forEach((fo) => {
+          (fo as SVGForeignObjectElement).style.overflow = 'visible';
+          let div = fo.querySelector('div') as HTMLElement | null;
+          if (!div) {
+            div = document.createElementNS('http://www.w3.org/1999/xhtml', 'div') as HTMLElement;
+            while (fo.firstChild) div.appendChild(fo.firstChild);
+            fo.appendChild(div);
+          }
+          div.style.whiteSpace = 'nowrap';
+          div.style.width = 'max-content';
+        });
 
         // マインドマップ: ルートノード（section-root）の円背景を薄い青に上書き
         const rootCircle = containerRef.current?.querySelector('.section-root .node-bkg') as SVGElement | null;
