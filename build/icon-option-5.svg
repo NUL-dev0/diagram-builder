@@ -14,8 +14,8 @@
     </filter>
   </defs>
 
-  <!-- Background: Option 3 gradient -->
-  <rect width="512" height="512" rx="100" ry="100" fill="url(#bg5)"/>
+  <!-- Background: full square (macOS applies rounded corners automatically) -->
+  <rect width="512" height="512" fill="url(#bg5)"/>
 
   <!-- Subtle grid (Option 3) -->
   <g opacity="0.06" stroke="white" stroke-width="1.5">
