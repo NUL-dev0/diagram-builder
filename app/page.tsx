@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Header from './components/Header';
 import DiagramTypeSelector from './components/DiagramTypeSelector';
@@ -15,9 +16,13 @@ const DiagramPreview = dynamic(() => import('./components/DiagramPreview'), { ss
 const MermaidEditor = dynamic(() => import('./components/MermaidEditor'), { ssr: false });
 
 export default function Home() {
+  const router = useRouter();
   const [diagramType, setDiagramType] = useState<DiagramType>('architecture');
   const [requirements, setRequirements] = useState('');
   const [mermaidCode, setMermaidCode] = useState(DEFAULT_MERMAID_CODES.architecture);
+  const [cleanCode, setCleanCode] = useState(DEFAULT_MERMAID_CODES.architecture);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const pendingActionRef = useRef<(() => void) | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveNameInput, setSaveNameInput] = useState('');
@@ -28,9 +33,28 @@ export default function Home() {
   const [showSecurityDialog, setShowSecurityDialog] = useState(false);
   const [showPdfDialog, setShowPdfDialog] = useState(false);
   const [provider, setProvider] = useState<string>('openai-compatible');
+  const [keyStatus, setKeyStatus] = useState<Record<string, boolean>>({});
   const dividerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveEnterRef = useRef<number>(0);
+
+  const apiKeyConfigured = provider === 'ollama' || !!keyStatus[provider];
+  const isDirty = mermaidCode !== cleanCode;
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  useEffect(() => {
+    fetch('/api/config/key-status')
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setKeyStatus(data.status); })
+      .catch(() => {});
+  }, [provider]);
 
   // ドラッグ中のマウスムーブ処理
   useEffect(() => {
@@ -75,10 +99,23 @@ export default function Home() {
     }
   };
 
+  const triggerIfDirty = (action: () => void) => {
+    if (isDirty) {
+      pendingActionRef.current = action;
+      setShowUnsavedDialog(true);
+    } else {
+      action();
+    }
+  };
+
   const handleTypeChange = (type: DiagramType) => {
-    setDiagramType(type);
     // eslint-disable-next-line security/detect-object-injection
-    setMermaidCode(DEFAULT_MERMAID_CODES[type]);
+    const code = DEFAULT_MERMAID_CODES[type];
+    triggerIfDirty(() => {
+      setDiagramType(type);
+      setMermaidCode(code);
+      setCleanCode(code);
+    });
   };
 
   const handleGenerate = () => {
@@ -118,17 +155,29 @@ export default function Home() {
   const handleSaveConfirm = async () => {
     if (!saveNameInput.trim()) return;
     await saveDiagram({ name: saveNameInput.trim(), type: diagramType, mermaidCode, folder: saveFolderInput.trim(), llmProvider: provider });
+    setCleanCode(mermaidCode);
     setSaveNameInput('');
     setSaveFolderInput('');
     setSaveDialogOpen(false);
+    if (pendingActionRef.current) {
+      pendingActionRef.current();
+      pendingActionRef.current = null;
+    }
   };
 
   const handleSelectDiagram = (diagram: { type: string; mermaidCode: string }) => {
-    setDiagramType(diagram.type as DiagramType);
-    setMermaidCode(diagram.mermaidCode);
+    triggerIfDirty(() => {
+      setDiagramType(diagram.type as DiagramType);
+      setMermaidCode(diagram.mermaidCode);
+      setCleanCode(diagram.mermaidCode);
+    });
   };
 
   const handleExportPdf = () => setShowPdfDialog(true);
+
+  const handleSettingsClick = () => {
+    triggerIfDirty(() => router.push('/settings'));
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
@@ -190,7 +239,42 @@ export default function Home() {
           </div>
         </div>
       )}
-      <Header />
+      {showUnsavedDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-80 mx-4">
+            <h2 className="text-sm font-semibold text-gray-800 mb-2">変更が保存されていません</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              現在の図への変更が失われます。<br />続ける前に保存しますか？
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => { setShowUnsavedDialog(false); setSaveDialogOpen(true); }}
+                className="w-full py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                保存する
+              </button>
+              <button
+                onClick={() => {
+                  setShowUnsavedDialog(false);
+                  const action = pendingActionRef.current;
+                  pendingActionRef.current = null;
+                  action?.();
+                }}
+                className="w-full py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                破棄して続ける
+              </button>
+              <button
+                onClick={() => setShowUnsavedDialog(false)}
+                className="w-full py-2 text-sm border rounded hover:bg-gray-50 text-gray-500"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <Header onSettingsClick={handleSettingsClick} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* 左パネル */}
@@ -201,6 +285,10 @@ export default function Home() {
             onChange={setRequirements}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
+            apiKeyConfigured={apiKeyConfigured}
+            provider={provider}
+            onProviderChange={setProvider}
+            keyStatus={keyStatus}
           />
           <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={deleteDiagram} onMove={moveDiagram} onUpdate={updateDiagramMeta} />
         </aside>
@@ -214,25 +302,6 @@ export default function Home() {
 
           {/* アクションボタン */}
           <div className="flex gap-2 px-4 py-2 border-t border-b bg-gray-50 shrink-0 items-center">
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              className="px-2 py-1.5 text-sm border rounded bg-white text-gray-700 cursor-pointer"
-            >
-              <option value="anthropic">Claude (Anthropic)</option>
-              <option value="openai">OpenAI</option>
-              <option value="gemini">Gemini</option>
-              <option value="ollama">Ollama</option>
-              <option value="azure">Azure OpenAI</option>
-              <option value="openai-compatible">カスタム (OpenAI 互換)</option>
-            </select>
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="px-3 py-1.5 text-sm border rounded hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700"
-            >
-              再生成
-            </button>
             <button
               onClick={handleSave}
               className="px-3 py-1.5 text-sm border rounded hover:bg-white transition-colors text-gray-700"

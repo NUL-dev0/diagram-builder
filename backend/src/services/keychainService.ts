@@ -30,3 +30,20 @@ export async function hasApiKey(provider: string): Promise<boolean> {
   const key = await getApiKey(provider);
   return key !== null && key.length > 0;
 }
+
+export type KeySource = 'keychain' | 'env' | 'none';
+
+export async function getKeySource(provider: string): Promise<KeySource> {
+  const fromKeychain = await keytar.getPassword(SERVICE, provider);
+  if (fromKeychain) return 'keychain';
+
+  const envMap: Record<string, string | undefined> = {
+    anthropic:           process.env.ANTHROPIC_API_KEY,
+    openai:              process.env.OPENAI_API_KEY,
+    gemini:              process.env.GEMINI_API_KEY,
+    azure:               process.env.AZURE_OPENAI_API_KEY,
+    'openai-compatible': process.env.CUSTOM_API_KEY,
+  };
+  // eslint-disable-next-line security/detect-object-injection
+  return envMap[provider] ? 'env' : 'none';
+}

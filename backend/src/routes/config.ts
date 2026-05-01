@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { createProvider } from '../services/llm/factory';
 import { LLMProviderName } from '../services/llm/types';
-import { saveApiKey, hasApiKey, deleteApiKey } from '../services/keychainService';
+import { saveApiKey, hasApiKey, deleteApiKey, getKeySource } from '../services/keychainService';
 
 const router = Router();
 
@@ -57,10 +57,12 @@ router.post('/save-key', async (req: Request, res: Response) => {
 router.get('/key-status', async (_req: Request, res: Response) => {
   const providers = ['anthropic', 'openai', 'gemini', 'ollama', 'azure', 'openai-compatible'];
   const status: Record<string, boolean> = {};
+  const source: Record<string, string> = {};
   for (const p of providers) {
     status[p] = await hasApiKey(p);
+    source[p] = await getKeySource(p);
   }
-  return res.json({ success: true, status });
+  return res.json({ success: true, status, source });
 });
 
 // API キーを削除

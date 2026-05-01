@@ -40,6 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# electron
+/.electron/
+/dist-electron/
+
 # 図データ（個人・機密情報が含まれる可能性）
 diagrams/
 

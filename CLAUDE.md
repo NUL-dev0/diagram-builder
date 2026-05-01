@@ -9,7 +9,8 @@
 - **Phase 4: 完了** ✅
 - **Phase 5: 完了** ✅
 - **Phase 6: 完了** ✅
-- **Phase 7〜8: 未着手**
+- **Phase 7: 進行中** 🔄 (#52〜#57 完了、#58〜#61 未着手)
+- **Phase 8: 未着手**
 
 ---
 
@@ -82,13 +83,13 @@
 - [x] #50 A4 縦横対応の確認・調整
 - [x] #51 PDF 出力ボタンの UI 実装
 
-### Phase 7 — Electron 対応
-- [ ] #52 Electron プロジェクトのセットアップ
-- [ ] #53 Main Process / Renderer Process の構成設定
-- [ ] #54 preload.ts による安全な IPC 通信の実装
-- [ ] #55 nodeIntegration: false / contextIsolation: true の確認
-- [ ] #56 Content Security Policy（CSP）の設定
-- [ ] #57 electron-builder の設定（Mac .dmg / Windows .exe）
+### Phase 7 — Electron 対応 🔄 進行中
+- [x] #52 Electron プロジェクトのセットアップ
+- [x] #53 Main Process / Renderer Process の構成設定
+- [x] #54 preload.ts による安全な IPC 通信の実装
+- [x] #55 nodeIntegration: false / contextIsolation: true の確認
+- [x] #56 Content Security Policy（CSP）の設定
+- [x] #57 electron-builder の設定（Mac .dmg / Windows .exe）
 - [ ] #58 Mac 向けビルド・動作確認
 - [ ] #59 Windows 向けビルド・動作確認
 - [ ] #60 自動アップデート機能の実装（electron-updater）
@@ -102,6 +103,14 @@
 - [ ] #66 Mac / Windows 両環境での最終動作確認
 - [ ] #67 npm audit 最終チェック・脆弱性ゼロの確認
 - [ ] #68 v1.0.0 タグの作成・GitHub Release の公開
+
+### Phase 7 以降の UI 改善（Issue 外）
+- 図の種類選択をドロップダウン方式に変更（省スペース化）
+- 「AI 生成」セクションにプロバイダ選択を統合、APIキー設定状態バッジ表示
+- 再生成ボタンをアクションバーから削除
+- APIキーの出所（キーチェーン vs 環境変数）を区別して設定画面に表示
+- Ollama のモデル自動検出（インストール済みの最初のモデルを使用）
+- 未保存変更の警告ダイアログ（図種切替・保存済み図選択・設定画面遷移・ウィンドウ閉じる）
 
 ### 今後の拡張案（未 Issue 化）
 - ラック実装図（カスタム SVG レンダラーが必要）

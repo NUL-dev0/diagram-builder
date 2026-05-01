@@ -16,6 +16,7 @@ const PROVIDERS: { value: Provider; label: string; needsKey: boolean }[] = [
 
 export default function SettingsPage() {
   const [keyStatus, setKeyStatus] = useState<Record<string, boolean>>({});
+  const [keySource, setKeySource] = useState<Record<string, string>>({});
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -23,12 +24,19 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(false);
 
-  useEffect(() => {
+  const fetchKeyStatus = () => {
     fetch('/api/config/key-status')
       .then((r) => r.json())
-      .then((d) => d.success && setKeyStatus(d.status))
+      .then((d) => {
+        if (d.success) {
+          setKeyStatus(d.status);
+          setKeySource(d.source ?? {});
+        }
+      })
       .catch(() => {});
-  }, []);
+  };
+
+  useEffect(() => { fetchKeyStatus(); }, []);
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
@@ -46,7 +54,7 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setKeyStatus((prev) => ({ ...prev, [selectedProvider]: true }));
+        fetchKeyStatus();
         setApiKeyInput('');
         showMessage('success', 'API キーを OS キーチェーンに保存しました');
       } else {
@@ -84,8 +92,8 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider: selectedProvider }),
       });
-      setKeyStatus((prev) => ({ ...prev, [selectedProvider]: false }));
-      showMessage('success', 'API キーを削除しました');
+      fetchKeyStatus();
+      showMessage('success', 'キーチェーンから API キーを削除しました');
     } catch {
       showMessage('error', '削除に失敗しました');
     }
@@ -132,8 +140,15 @@ export default function SettingsPage() {
           {currentProvider.needsKey ? (
             <div>
               <label className="block text-xs text-gray-500 mb-1">
-                API キー {keyStatus[selectedProvider] && <span className="text-green-600">（保存済み）</span>}
+                API キー{' '}
+                {keySource[selectedProvider] === 'keychain' && <span className="text-green-600">（キーチェーンに保存済み）</span>}
+                {keySource[selectedProvider] === 'env' && <span className="text-blue-600">（.env ファイルから読み込み中）</span>}
               </label>
+              {keySource[selectedProvider] === 'env' && (
+                <p className="mb-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                  .env ファイルの環境変数からAPIキーを読み込んでいます。UIから削除はできません。削除する場合は .env ファイルを直接編集してください。
+                </p>
+              )}
               <input
                 type="password"
                 value={apiKeyInput}
@@ -166,7 +181,7 @@ export default function SettingsPage() {
             >
               {isTesting ? '接続中...' : 'テスト接続'}
             </button>
-            {keyStatus[selectedProvider] && (
+            {keySource[selectedProvider] === 'keychain' && (
               <button
                 onClick={() => setConfirmDialog(true)}
                 className="px-4 py-1.5 text-sm border border-red-200 rounded hover:bg-red-50 text-red-600 transition-colors ml-auto"
