@@ -5,9 +5,10 @@ import dynamic from 'next/dynamic';
 import Header from './components/Header';
 import DiagramTypeSelector from './components/DiagramTypeSelector';
 import RequirementsForm from './components/RequirementsForm';
-import DiagramList, { SavedDiagram } from './components/DiagramList';
+import DiagramList from './components/DiagramList';
 import { DiagramType, DEFAULT_MERMAID_CODES } from './types/diagram';
 import SecurityDialog from './components/SecurityDialog';
+import { useDiagrams } from './hooks/useDiagrams';
 
 const DiagramPreview = dynamic(() => import('./components/DiagramPreview'), { ssr: false });
 const MermaidEditor = dynamic(() => import('./components/MermaidEditor'), { ssr: false });
@@ -17,7 +18,9 @@ export default function Home() {
   const [requirements, setRequirements] = useState('');
   const [mermaidCode, setMermaidCode] = useState(DEFAULT_MERMAID_CODES.architecture);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [savedDiagrams] = useState<SavedDiagram[]>([]);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveNameInput, setSaveNameInput] = useState('');
+  const { diagrams, saveDiagram, deleteDiagram } = useDiagrams();
   const [editorHeight, setEditorHeight] = useState(192);
   const [editorVisible, setEditorVisible] = useState(true);
   const [showSecurityDialog, setShowSecurityDialog] = useState(false);
@@ -106,9 +109,18 @@ export default function Home() {
     }
   };
 
-  const handleSave = () => {
-    // Phase 4 で実装
-    alert('保存機能は Phase 4 で実装予定です');
+  const handleSave = () => setSaveDialogOpen(true);
+
+  const handleSaveConfirm = async () => {
+    if (!saveNameInput.trim()) return;
+    await saveDiagram({ name: saveNameInput.trim(), type: diagramType, mermaidCode, llmProvider: provider });
+    setSaveNameInput('');
+    setSaveDialogOpen(false);
+  };
+
+  const handleSelectDiagram = (diagram: { type: string; mermaidCode: string }) => {
+    setDiagramType(diagram.type as DiagramType);
+    setMermaidCode(diagram.mermaidCode);
   };
 
   const handleExportPdf = () => {
@@ -126,6 +138,26 @@ export default function Home() {
           onCancel={() => setShowSecurityDialog(false)}
         />
       )}
+      {saveDialogOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <h2 className="text-sm font-semibold text-gray-800 mb-3">図を保存</h2>
+            <input
+              type="text"
+              value={saveNameInput}
+              onChange={(e) => setSaveNameInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveConfirm()}
+              placeholder="図の名前を入力"
+              autoFocus
+              className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-4"
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setSaveDialogOpen(false)} className="px-4 py-1.5 text-sm border rounded hover:bg-gray-50 text-gray-700">キャンセル</button>
+              <button onClick={handleSaveConfirm} disabled={!saveNameInput.trim()} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">保存</button>
+            </div>
+          </div>
+        </div>
+      )}
       <Header />
 
       <div className="flex flex-1 overflow-hidden">
@@ -138,7 +170,7 @@ export default function Home() {
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
           />
-          <DiagramList diagrams={savedDiagrams} onSelect={() => {}} />
+          <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={deleteDiagram} />
         </aside>
 
         {/* 右パネル */}
