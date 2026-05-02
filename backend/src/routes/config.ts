@@ -53,6 +53,25 @@ router.post('/save-key', async (req: Request, res: Response) => {
   }
 });
 
+// カスタムベースURL の保存・取得
+router.post('/save-url', async (req: Request, res: Response) => {
+  const parsed = z.object({ url: z.string().min(1).max(500) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ success: false, error: parsed.error.flatten() });
+  try {
+    await saveApiKey('openai-compatible-url', parsed.data.url);
+    return res.json({ success: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '保存に失敗しました';
+    return res.status(500).json({ success: false, error: message });
+  }
+});
+
+router.get('/custom-url', async (_req: Request, res: Response) => {
+  const { getApiKey } = await import('../services/keychainService');
+  const url = await getApiKey('openai-compatible-url') ?? process.env.CUSTOM_BASE_URL ?? '';
+  return res.json({ success: true, url });
+});
+
 // API キーの保存状態を確認（キー本体は返さない）
 router.get('/key-status', async (_req: Request, res: Response) => {
   const providers = ['anthropic', 'openai', 'gemini', 'ollama', 'azure', 'openai-compatible'];
@@ -62,7 +81,9 @@ router.get('/key-status', async (_req: Request, res: Response) => {
     status[p] = await hasApiKey(p);
     source[p] = await getKeySource(p);
   }
-  return res.json({ success: true, status, source });
+  const { getApiKey } = await import('../services/keychainService');
+  const customUrl = await getApiKey('openai-compatible-url') ?? process.env.CUSTOM_BASE_URL ?? '';
+  return res.json({ success: true, status, source, customUrl });
 });
 
 // API キーを削除

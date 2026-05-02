@@ -12,7 +12,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
 
   private async client(): Promise<OpenAI> {
     const apiKey = await getApiKey('openai-compatible');
-    const baseURL = process.env.CUSTOM_BASE_URL;
+    const baseURL = await getApiKey('openai-compatible-url') ?? process.env.CUSTOM_BASE_URL;
     if (!apiKey) throw new Error('CUSTOM_API_KEY が設定されていません');
     if (!baseURL) throw new Error('CUSTOM_BASE_URL が設定されていません');
     return new OpenAI({ apiKey, baseURL });

@@ -19,6 +19,8 @@ export default function SettingsPage() {
   const [keySource, setKeySource] = useState<Record<string, string>>({});
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
   const [apiKeyInput, setApiKeyInput] = useState('');
+  const [customUrlInput, setCustomUrlInput] = useState('');
+  const [savedCustomUrl, setSavedCustomUrl] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -31,6 +33,7 @@ export default function SettingsPage() {
         if (d.success) {
           setKeyStatus(d.status);
           setKeySource(d.source ?? {});
+          if (d.customUrl !== undefined) setSavedCustomUrl(d.customUrl);
         }
       })
       .catch(() => {});
@@ -64,6 +67,27 @@ export default function SettingsPage() {
       showMessage('error', 'バックエンドへの接続に失敗しました');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveUrl = async () => {
+    if (!customUrlInput.trim()) return;
+    try {
+      const res = await fetch('/api/config/save-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: customUrlInput.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSavedCustomUrl(customUrlInput.trim());
+        setCustomUrlInput('');
+        showMessage('success', 'ベース URL を保存しました');
+      } else {
+        showMessage('error', data.error ?? '保存に失敗しました');
+      }
+    } catch {
+      showMessage('error', 'バックエンドへの接続に失敗しました');
     }
   };
 
@@ -111,6 +135,13 @@ export default function SettingsPage() {
       </header>
 
       <div className="max-w-xl mx-auto p-6 space-y-6">
+        {/* カスタムプロバイダURL未設定警告 */}
+        {selectedProvider === 'openai-compatible' && !savedCustomUrl && (
+          <div className="px-4 py-2 rounded text-sm bg-red-50 text-red-700 border border-red-200">
+            CUSTOM_BASE_URL が設定されていません
+          </div>
+        )}
+
         {/* メッセージ */}
         {message && (
           <div className={`px-4 py-2 rounded text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
@@ -158,7 +189,33 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-gray-400 mt-1">OS キーチェーン（macOS Keychain / Windows Credential Manager）に保存されます</p>
             </div>
-          ) : (
+          ) : null}
+
+          {/* カスタムプロバイダのベースURL */}
+          {selectedProvider === 'openai-compatible' && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                ベース URL{savedCustomUrl && <span className="text-green-600 ml-1">（保存済み: {savedCustomUrl}）</span>}
+              </label>
+              <input
+                type="text"
+                value={customUrlInput}
+                onChange={(e) => setCustomUrlInput(e.target.value)}
+                placeholder={savedCustomUrl || 'https://openrouter.ai/api/v1'}
+                className="w-full px-3 py-2 text-sm border rounded text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">OpenAI 互換 API のエンドポイント URL（例: OpenRouter, LM Studio）</p>
+              <button
+                onClick={handleSaveUrl}
+                disabled={!customUrlInput.trim()}
+                className="mt-2 px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                URL を保存
+              </button>
+            </div>
+          )}
+
+          {selectedProvider !== 'openai-compatible' && !currentProvider.needsKey && (
             <p className="text-sm text-green-600 bg-green-50 rounded px-3 py-2">
               ✅ Ollama はローカルで動作します。API キーは不要です。
             </p>
