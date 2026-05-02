@@ -35,6 +35,7 @@ jobs:
 
   release-windows:
     name: Build & Release (Windows)
+    needs: [release-mac]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
