@@ -306,11 +306,22 @@ export default function Home() {
               現在の図への変更が失われます。<br />続ける前に保存しますか？
             </p>
             <div className="flex flex-col gap-2">
+              {selectedDiagram && (
+                <button
+                  onClick={async () => {
+                    setShowUnsavedDialog(false);
+                    await handleOverwrite();
+                  }}
+                  className="w-full py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  上書き保存
+                </button>
+              )}
               <button
                 onClick={() => { setShowUnsavedDialog(false); setSaveDialogOpen(true); }}
-                className="w-full py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                className={`w-full py-2 text-sm rounded ${selectedDiagram ? 'border hover:bg-gray-50 text-gray-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
               >
-                保存する
+                新規保存
               </button>
               <button
                 onClick={() => {
