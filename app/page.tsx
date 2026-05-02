@@ -29,7 +29,9 @@ export default function Home() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveNameInput, setSaveNameInput] = useState('');
   const [saveFolderInput, setSaveFolderInput] = useState('');
-  const { diagrams, saveDiagram, deleteDiagram, moveDiagram, updateDiagramMeta, folderOrder, reorderFolders } = useDiagrams();
+  const { diagrams, saveDiagram, overwriteDiagram, deleteDiagram, moveDiagram, updateDiagramMeta, folderOrder, reorderFolders } = useDiagrams();
+  const [selectedDiagram, setSelectedDiagram] = useState<import('./hooks/useDiagrams').SavedDiagram | null>(null);
+  const [saveChoiceDialogOpen, setSaveChoiceDialogOpen] = useState(false);
   const [editorHeight, setEditorHeight] = useState(192);
   const [editorVisible, setEditorVisible] = useState(true);
   const [showSecurityDialog, setShowSecurityDialog] = useState(false);
@@ -117,6 +119,7 @@ export default function Home() {
       setDiagramType(type);
       setMermaidCode(code);
       setCleanCode(code);
+      setSelectedDiagram(null);
     });
   };
 
@@ -157,26 +160,47 @@ export default function Home() {
     }
   };
 
-  const handleSave = () => setSaveDialogOpen(true);
+  const handleSave = () => {
+    if (selectedDiagram) {
+      setSaveChoiceDialogOpen(true);
+    } else {
+      setSaveDialogOpen(true);
+    }
+  };
 
-  const handleSaveConfirm = async () => {
-    if (!saveNameInput.trim()) return;
-    await saveDiagram({ name: saveNameInput.trim(), type: diagramType, mermaidCode, folder: saveFolderInput.trim(), llmProvider: provider });
+  const handleOverwrite = async () => {
+    if (!selectedDiagram) return;
+    await overwriteDiagram(selectedDiagram.id, mermaidCode);
+    setSelectedDiagram((prev) => prev ? { ...prev, mermaidCode } : null);
     setCleanCode(mermaidCode);
-    setSaveNameInput('');
-    setSaveFolderInput('');
-    setSaveDialogOpen(false);
+    setSaveChoiceDialogOpen(false);
     if (pendingActionRef.current) {
       pendingActionRef.current();
       pendingActionRef.current = null;
     }
   };
 
-  const handleSelectDiagram = (diagram: { type: string; mermaidCode: string }) => {
+  const handleSaveConfirm = async () => {
+    if (!saveNameInput.trim()) return;
+    const saved = await saveDiagram({ name: saveNameInput.trim(), type: diagramType, mermaidCode, folder: saveFolderInput.trim(), llmProvider: provider });
+    if (saved) setSelectedDiagram(saved);
+    setCleanCode(mermaidCode);
+    setSaveNameInput('');
+    setSaveFolderInput('');
+    setSaveDialogOpen(false);
+    setSaveChoiceDialogOpen(false);
+    if (pendingActionRef.current) {
+      pendingActionRef.current();
+      pendingActionRef.current = null;
+    }
+  };
+
+  const handleSelectDiagram = (diagram: import('./hooks/useDiagrams').SavedDiagram) => {
     triggerIfDirty(() => {
       setDiagramType(diagram.type as DiagramType);
       setMermaidCode(diagram.mermaidCode);
       setCleanCode(diagram.mermaidCode);
+      setSelectedDiagram(diagram);
     });
   };
 
@@ -203,6 +227,34 @@ export default function Home() {
           diagrams={diagrams}
           onClose={() => setShowPdfDialog(false)}
         />
+      )}
+      {saveChoiceDialogOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-80 mx-4">
+            <h2 className="text-sm font-semibold text-gray-800 mb-1">保存方法を選択</h2>
+            <p className="text-xs text-gray-500 mb-4">「{selectedDiagram?.name}」を編集中</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleOverwrite}
+                className="w-full py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                上書き保存
+              </button>
+              <button
+                onClick={() => { setSaveChoiceDialogOpen(false); setSaveDialogOpen(true); }}
+                className="w-full py-2 text-sm border rounded hover:bg-gray-50 text-gray-700"
+              >
+                新規保存（別名で保存）
+              </button>
+              <button
+                onClick={() => setSaveChoiceDialogOpen(false)}
+                className="w-full py-2 text-sm border rounded hover:bg-gray-50 text-gray-500"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {saveDialogOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -310,6 +362,11 @@ export default function Home() {
 
           {/* アクションボタン */}
           <div className="flex gap-2 px-4 py-2 border-t border-b bg-gray-50 shrink-0 items-center">
+            {selectedDiagram && (
+              <span className="text-xs text-gray-500 truncate max-w-[200px]" title={selectedDiagram.name}>
+                📄 {selectedDiagram.name}
+              </span>
+            )}
             <button
               onClick={handleSave}
               className="px-3 py-1.5 text-sm border rounded hover:bg-white transition-colors text-gray-700"

@@ -145,6 +145,25 @@ export function useDiagrams() {
     });
   }, []);
 
+  const overwriteDiagram = useCallback(async (id: string, mermaidCode: string): Promise<void> => {
+    try {
+      await fetch(`/api/diagrams/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mermaidCode }),
+      });
+    } catch {
+      // バックエンド未起動時はスキップ
+    }
+    setDiagrams((prev) => {
+      const updated = prev.map((d) =>
+        d.id === id ? { ...d, mermaidCode, updatedAt: new Date().toISOString() } : d
+      );
+      writeLocalStorage(updated);
+      return updated;
+    });
+  }, []);
+
   const updateDiagramMeta = useCallback(async (id: string, data: { name?: string; folder?: string }): Promise<void> => {
     try {
       await fetch(`/api/diagrams/${id}`, {
@@ -182,5 +201,5 @@ export function useDiagrams() {
     localStorage.setItem(LS_FOLDER_ORDER_KEY, JSON.stringify(ordered));
   }, []);
 
-  return { diagrams, isLoading, saveDiagram, deleteDiagram, moveDiagram, updateDiagramMeta, folderOrder, reorderFolders };
+  return { diagrams, isLoading, saveDiagram, overwriteDiagram, deleteDiagram, moveDiagram, updateDiagramMeta, folderOrder, reorderFolders };
 }
