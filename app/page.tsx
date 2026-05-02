@@ -37,6 +37,10 @@ export default function Home() {
   const [showSecurityDialog, setShowSecurityDialog] = useState(false);
   const [showPdfDialog, setShowPdfDialog] = useState(false);
   const [provider, setProvider] = useState<string>('openai-compatible');
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [customModels, setCustomModels] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('diagrambuilder:customModels') ?? '[]'); } catch { return []; }
+  });
   const [keyStatus, setKeyStatus] = useState<Record<string, boolean>>({});
   const dividerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -59,6 +63,16 @@ export default function Home() {
       .then((data) => { if (data.success) setKeyStatus(data.status); })
       .catch(() => {});
   }, [provider]);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'diagrambuilder:customModels') {
+        try { setCustomModels(JSON.parse(e.newValue ?? '[]')); } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   // ドラッグ中のマウスムーブ処理
   useEffect(() => {
@@ -141,6 +155,7 @@ export default function Home() {
           description: requirements,
           currentCode: mermaidCode,
           provider,
+          ...(selectedModel ? { model: selectedModel } : {}),
         }),
       });
       const data = await res.json();
@@ -192,6 +207,16 @@ export default function Home() {
     if (pendingActionRef.current) {
       pendingActionRef.current();
       pendingActionRef.current = null;
+    }
+  };
+
+  const handleDeleteDiagram = (id: string) => {
+    deleteDiagram(id);
+    if (selectedDiagram?.id === id) {
+      const defaultCode = DEFAULT_MERMAID_CODES[diagramType];
+      setSelectedDiagram(null);
+      setMermaidCode(defaultCode);
+      setCleanCode(defaultCode);
     }
   };
 
@@ -367,8 +392,11 @@ export default function Home() {
             provider={provider}
             onProviderChange={setProvider}
             keyStatus={keyStatus}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            customModels={customModels}
           />
-          <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={deleteDiagram} onMove={moveDiagram} onUpdate={updateDiagramMeta} folderOrder={folderOrder} onReorderFolders={reorderFolders} />
+          <DiagramList diagrams={diagrams} onSelect={handleSelectDiagram} onDelete={handleDeleteDiagram} onMove={moveDiagram} onUpdate={updateDiagramMeta} folderOrder={folderOrder} onReorderFolders={reorderFolders} />
         </aside>
 
         {/* 右パネル */}

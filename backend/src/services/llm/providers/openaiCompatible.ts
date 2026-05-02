@@ -7,7 +7,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
   readonly defaultModel: string;
 
   constructor() {
-    this.defaultModel = process.env.CUSTOM_DEFAULT_MODEL ?? 'gpt-4o';
+    this.defaultModel = process.env.CUSTOM_DEFAULT_MODEL ?? 'openai/gpt-4o';
+  }
+
+  async resolveDefaultModel(): Promise<string> {
+    const stored = await getApiKey('openai-compatible-model');
+    return stored ?? this.defaultModel;
   }
 
   private async client(): Promise<OpenAI> {
@@ -21,7 +26,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
   async generate(prompt: string, model?: string): Promise<string> {
     const c = await this.client();
     const response = await c.chat.completions.create({
-      model: model ?? this.defaultModel,
+      model: model ?? await this.resolveDefaultModel(),
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 2048,
     });
@@ -31,7 +36,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
   async testConnection(model?: string): Promise<boolean> {
     const c = await this.client();
     await c.chat.completions.create({
-      model: model ?? this.defaultModel,
+      model: model ?? await this.resolveDefaultModel(),
       messages: [{ role: 'user', content: 'ping' }],
       max_tokens: 10,
     });

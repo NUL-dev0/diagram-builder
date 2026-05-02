@@ -4,6 +4,15 @@ import { useState } from 'react';
 
 type GenerationPhase = 'idle' | 'generating' | 'done' | 'error';
 
+const PRESET_MODELS = [
+  'openai/gpt-4o',
+  'openai/gpt-4o-mini',
+  'anthropic/claude-3-5-sonnet',
+  'anthropic/claude-3-haiku',
+  'google/gemini-pro-1.5',
+  'meta-llama/llama-3.1-70b-instruct',
+];
+
 const PROVIDERS = [
   { value: 'anthropic', label: 'Claude' },
   { value: 'openai', label: 'OpenAI' },
@@ -23,10 +32,14 @@ interface Props {
   provider: string;
   onProviderChange: (provider: string) => void;
   keyStatus: Record<string, boolean>;
+  selectedModel?: string;
+  onModelChange?: (model: string) => void;
+  customModels?: string[];
 }
 
 export default function RequirementsForm({
   value, onChange, onGenerate, generationPhase, generationError, apiKeyConfigured, provider, onProviderChange, keyStatus,
+  selectedModel = '', onModelChange, customModels = [],
 }: Props) {
   const [open, setOpen] = useState(true);
   const isGenerating = generationPhase === 'generating';
@@ -103,6 +116,24 @@ export default function RequirementsForm({
           {open ? '▲' : '▼'}
         </button>
       </div>
+
+      {open && provider === 'openai-compatible' && onModelChange && (
+        <select
+          value={selectedModel}
+          onChange={(e) => onModelChange(e.target.value)}
+          className="w-full px-2 py-1 text-xs border rounded bg-white text-gray-600 mb-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
+        >
+          <option value="">（デフォルトモデル）</option>
+          <optgroup label="プリセット">
+            {PRESET_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+          </optgroup>
+          {customModels.length > 0 && (
+            <optgroup label="カスタム">
+              {customModels.map((m) => <option key={m} value={m}>{m}</option>)}
+            </optgroup>
+          )}
+        </select>
+      )}
 
       {open && (
         <>

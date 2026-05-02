@@ -41,18 +41,18 @@ function resolveNodePath(): string {
   }
 }
 
-function waitForPort(port: number, urlPath = '/', timeoutMs = 90000): Promise<void> {
+function waitForPort(port: number, urlPath = '/', timeoutMs = 90000, expectedStatus = 200): Promise<void> {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
     const attempt = () => {
       const req = http.request({ host: 'localhost', port, path: urlPath, method: 'GET' }, (res) => {
         res.resume();
-        if ((res.statusCode ?? 500) < 500) {
+        if (res.statusCode === expectedStatus) {
           resolve();
         } else if (Date.now() < deadline) {
           setTimeout(attempt, 1000);
         } else {
-          reject(new Error(`Port ${port} not ready after ${timeoutMs}ms`));
+          reject(new Error(`Port ${port} not ready after ${timeoutMs}ms (last status: ${res.statusCode})`));
         }
       });
       req.on('error', () => {

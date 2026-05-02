@@ -53,6 +53,19 @@ router.post('/save-key', async (req: Request, res: Response) => {
   }
 });
 
+// カスタムモデル（デフォルト）の保存・取得
+router.post('/save-model', async (req: Request, res: Response) => {
+  const parsed = z.object({ model: z.string().min(1).max(200) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ success: false, error: parsed.error.flatten() });
+  try {
+    await saveApiKey('openai-compatible-model', parsed.data.model);
+    return res.json({ success: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '保存に失敗しました';
+    return res.status(500).json({ success: false, error: message });
+  }
+});
+
 // カスタムベースURL の保存・取得
 router.post('/save-url', async (req: Request, res: Response) => {
   const parsed = z.object({ url: z.string().min(1).max(500) }).safeParse(req.body);
@@ -83,7 +96,8 @@ router.get('/key-status', async (_req: Request, res: Response) => {
   }
   const { getApiKey } = await import('../services/keychainService');
   const customUrl = await getApiKey('openai-compatible-url') ?? process.env.CUSTOM_BASE_URL ?? '';
-  return res.json({ success: true, status, source, customUrl });
+  const customModel = await getApiKey('openai-compatible-model') ?? process.env.CUSTOM_DEFAULT_MODEL ?? '';
+  return res.json({ success: true, status, source, customUrl, customModel });
 });
 
 // API キーを削除

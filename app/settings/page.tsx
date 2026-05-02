@@ -5,13 +5,22 @@ import Link from 'next/link';
 
 type Provider = 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'azure' | 'openai-compatible';
 
+const PRESET_MODELS = [
+  'openai/gpt-4o',
+  'openai/gpt-4o-mini',
+  'anthropic/claude-3-5-sonnet',
+  'anthropic/claude-3-haiku',
+  'google/gemini-pro-1.5',
+  'meta-llama/llama-3.1-70b-instruct',
+];
+
 const PROVIDERS: { value: Provider; label: string; needsKey: boolean }[] = [
   { value: 'anthropic',         label: 'Claude (Anthropic)',          needsKey: true },
   { value: 'openai',            label: 'OpenAI',                      needsKey: true },
   { value: 'gemini',            label: 'Gemini (Google)',              needsKey: true },
   { value: 'ollama',            label: 'Ollama（ローカル・送信なし）', needsKey: false },
   { value: 'azure',             label: 'Azure OpenAI',                needsKey: true },
-  { value: 'openai-compatible', label: 'カスタム（OpenAI 互換）',     needsKey: true },
+  { value: 'openai-compatible', label: 'カスタム',                    needsKey: true },
 ];
 
 export default function SettingsPage() {
@@ -21,6 +30,11 @@ export default function SettingsPage() {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [customUrlInput, setCustomUrlInput] = useState('');
   const [savedCustomUrl, setSavedCustomUrl] = useState('');
+  const [savedCustomModel, setSavedCustomModel] = useState('');
+  const [newModelInput, setNewModelInput] = useState('');
+  const [customModels, setCustomModels] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('diagrambuilder:customModels') ?? '[]'); } catch { return []; }
+  });
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -34,6 +48,7 @@ export default function SettingsPage() {
           setKeyStatus(d.status);
           setKeySource(d.source ?? {});
           if (d.customUrl !== undefined) setSavedCustomUrl(d.customUrl);
+          if (d.customModel !== undefined) setSavedCustomModel(d.customModel);
         }
       })
       .catch(() => {});
@@ -89,6 +104,40 @@ export default function SettingsPage() {
     } catch {
       showMessage('error', 'バックエンドへの接続に失敗しました');
     }
+  };
+
+  const handleSaveModel = async (model: string) => {
+    try {
+      const res = await fetch('/api/config/save-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSavedCustomModel(model);
+        showMessage('success', `デフォルトモデルを ${model} に設定しました`);
+      } else {
+        showMessage('error', data.error ?? '保存に失敗しました');
+      }
+    } catch {
+      showMessage('error', 'バックエンドへの接続に失敗しました');
+    }
+  };
+
+  const handleAddCustomModel = () => {
+    const m = newModelInput.trim();
+    if (!m || customModels.includes(m)) return;
+    const updated = [...customModels, m];
+    setCustomModels(updated);
+    localStorage.setItem('diagrambuilder:customModels', JSON.stringify(updated));
+    setNewModelInput('');
+  };
+
+  const handleDeleteCustomModel = (model: string) => {
+    const updated = customModels.filter((m) => m !== model);
+    setCustomModels(updated);
+    localStorage.setItem('diagrambuilder:customModels', JSON.stringify(updated));
   };
 
   const handleTestConnection = async () => {
@@ -204,7 +253,7 @@ export default function SettingsPage() {
                 placeholder={savedCustomUrl || 'https://openrouter.ai/api/v1'}
                 className="w-full px-3 py-2 text-sm border rounded text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-400 mt-1">OpenAI 互換 API のエンドポイント URL（例: OpenRouter, LM Studio）</p>
+              <p className="text-xs text-gray-400 mt-1">カスタム API のエンドポイント URL（例: OpenRouter, LM Studio）</p>
               <button
                 onClick={handleSaveUrl}
                 disabled={!customUrlInput.trim()}
@@ -212,6 +261,68 @@ export default function SettingsPage() {
               >
                 URL を保存
               </button>
+            </div>
+          )}
+
+          {/* カスタムプロバイダのモデル設定 */}
+          {selectedProvider === 'openai-compatible' && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                デフォルトモデル
+                {savedCustomModel && <span className="text-green-600 ml-1">（現在: {savedCustomModel}）</span>}
+              </label>
+              <p className="text-xs text-gray-400 mb-1">プリセット</p>
+              <div className="flex flex-wrap gap-1 mb-2">
+                {PRESET_MODELS.map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => handleSaveModel(m)}
+                    className={`px-2 py-0.5 text-xs rounded border transition-colors ${savedCustomModel === m ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-gray-50 text-gray-600 border-gray-300'}`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              {customModels.length > 0 && (
+                <>
+                  <p className="text-xs text-gray-400 mb-1">カスタム</p>
+                  <div className="flex flex-col gap-1 mb-2">
+                    {customModels.map((m) => (
+                      <div key={m} className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleSaveModel(m)}
+                          className={`flex-1 px-2 py-0.5 text-xs rounded border text-left transition-colors ${savedCustomModel === m ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-gray-50 text-gray-600 border-gray-300'}`}
+                        >
+                          {m}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCustomModel(m)}
+                          className="px-1.5 py-0.5 text-xs text-red-400 hover:text-red-600"
+                          title="削除"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div className="flex gap-1">
+                <input
+                  value={newModelInput}
+                  onChange={(e) => setNewModelInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && newModelInput.trim()) handleAddCustomModel(); }}
+                  placeholder="モデル名を追加（例: openai/gpt-4o）"
+                  className="flex-1 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-700"
+                />
+                <button
+                  onClick={handleAddCustomModel}
+                  disabled={!newModelInput.trim()}
+                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 shrink-0"
+                >
+                  追加
+                </button>
+              </div>
             </div>
           )}
 
