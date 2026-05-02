@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -71,6 +71,7 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUp
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [movePopover, setMovePopover] = useState<string | null>(null);
   const [newFolderInput, setNewFolderInput] = useState('');
+  const editEnterRef = useRef<number>(0);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -278,7 +279,12 @@ export default function DiagramList({ diagrams, onSelect, onDelete, onMove, onUp
           <div className="bg-white rounded-lg shadow-xl p-5 max-w-xs w-full mx-4">
             <h2 className="text-sm font-semibold text-gray-800 mb-3">図の編集</h2>
             <label className="block text-xs text-gray-500 mb-1">名前</label>
-            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleEditSave()} autoFocus className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-3" />
+            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              const now = Date.now();
+              if (now - editEnterRef.current < 500) { editEnterRef.current = 0; handleEditSave(); }
+              else { editEnterRef.current = now; }
+            }} autoFocus className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-3" />
             <label className="block text-xs text-gray-500 mb-1">フォルダ</label>
             <input type="text" list="edit-folder-list" value={editFolder} onChange={(e) => setEditFolder(e.target.value)} placeholder="フォルダ名（省略可）" className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 mb-1" />
             <datalist id="edit-folder-list">{allFolderNames.map((f) => <option key={f} value={f} />)}</datalist>
