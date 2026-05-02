@@ -333,7 +333,14 @@ export default function Home() {
           </div>
         </div>
       )}
-      <Header onSettingsClick={handleSettingsClick} />
+      <Header
+        onSettingsClick={handleSettingsClick}
+        selectedDiagramName={selectedDiagram?.name}
+        onSave={handleSave}
+        onExportPdf={handleExportPdf}
+        editorVisible={editorVisible}
+        onToggleEditor={() => setEditorVisible((v) => !v)}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* 左パネル */}
@@ -358,33 +365,6 @@ export default function Home() {
           {/* プレビュー */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <DiagramPreview code={mermaidCode} />
-          </div>
-
-          {/* アクションボタン */}
-          <div className="flex gap-2 px-4 py-2 border-t border-b bg-gray-50 shrink-0 items-center">
-            {selectedDiagram && (
-              <span className="text-xs text-gray-500 truncate max-w-[200px]" title={selectedDiagram.name}>
-                📄 {selectedDiagram.name}
-              </span>
-            )}
-            <button
-              onClick={handleSave}
-              className="px-3 py-1.5 text-sm border rounded hover:bg-white transition-colors text-gray-700"
-            >
-              保存
-            </button>
-            <button
-              onClick={handleExportPdf}
-              className="px-3 py-1.5 text-sm border rounded hover:bg-white transition-colors text-gray-700"
-            >
-              PDF 出力
-            </button>
-            <button
-              onClick={() => setEditorVisible((v) => !v)}
-              className="ml-auto px-3 py-1.5 text-sm border rounded hover:bg-white transition-colors text-gray-700"
-            >
-              {editorVisible ? 'コードを隠す' : 'コードを表示'}
-            </button>
           </div>
 
           {/* リサイズディバイダー */}
